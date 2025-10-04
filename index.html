@@ -1,0 +1,1895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PUEC</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥳</text></svg>">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #ffffff;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #000000;
+        }
+        .main-container {
+            padding: 40px 20px;
+        }
+        .header-accent {
+            height: 2px;
+            background-color: #e5e7eb;
+            margin-bottom: 40px;
+        }
+        .card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .card-header {
+            background-color: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            color: #000000;
+            text-align: center;
+            padding: 30px 20px 20px;
+        }
+        .btn-primary {
+            background-color: #000000;
+            border-color: #000000;
+            border-radius: 6px;
+            padding: 12px;
+            font-weight: 500;
+        }
+        .btn-primary:hover {
+            background-color: #374151;
+            border-color: #374151;
+        }
+        .btn-primary:focus {
+            background-color: #374151;
+            border-color: #374151;
+            box-shadow: 0 0 0 0.2rem rgba(0,0,0,0.25);
+        }
+        .form-control, .form-select {
+            border-color: #d1d5db;
+            border-radius: 6px;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #000000;
+            box-shadow: 0 0 0 0.2rem rgba(0,0,0,0.1);
+        }
+        .form-label {
+            color: #374151;
+            font-weight: 500;
+        }
+        #results {
+            max-height: none;
+            overflow: visible;
+        }
+        .table {
+            font-size: 14px;
+        }
+        .table th {
+            background-color: #f9fafb;
+            border-top: none;
+            font-weight: 600;
+            color: #374151;
+        }
+        .badge {
+            font-size: 0.75em;
+        }
+        .bg-info { background-color: #6b7280 !important; }
+        .bg-warning { background-color: #9ca3af !important; }
+        .bg-success { background-color: #000000 !important; }
+        .bg-danger { background-color: #6b7280 !important; }
+        .bg-secondary { background-color: #d1d5db !important; color: #000000 !important; }
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+        }
+        .alert {
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+        }
+        .text-primary {
+            color: #000000 !important;
+        }
+        .alert-success .alert-heading {
+            color: #000000;
+        }
+        .card-header.bg-success {
+            background-color: #f9fafb !important;
+            color: #000000 !important;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .accordion-collapse {
+            overflow: visible !important;
+        }
+        .accordion-body {
+            overflow: visible !important;
+        }
+        .table-responsive {
+            overflow-x: auto;
+            overflow-y: visible;
+        }
+    </style>
+</head>
+<body>
+    <div class="banner" style="background-color: #f8f9fa; border-bottom: 1px solid #e5e7eb; padding: 10px 0;">
+        <div class="container">
+            <div class="d-flex justify-content-center gap-2">
+                <button class="btn btn-outline-secondary btn-sm" id="puecBtn" onclick="setMode('PUEC')">PUEC</button>
+                <button class="btn btn-outline-secondary btn-sm" id="frpaBtn" onclick="setMode('FRPA')">FRPA</button>
+                <button class="btn btn-outline-secondary btn-sm" id="tenureBtn" onclick="setMode('Tenure')">Tenure</button>
+                <button class="btn btn-outline-secondary btn-sm" id="fullBtn" onclick="setMode('Full')">Full</button>
+                <button class="btn btn-outline-secondary btn-sm" id="adhocBtn" onclick="setMode('Ad hoc')">Ad hoc</button>
+            </div>
+        </div>
+    </div>
+    <div class="header-accent"></div>
+    <div class="container main-container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-xl-7">
+                <div class="card">
+                    <div class="card-header">
+                        <h1 class="mb-0">PUEC Party 🥳🕺🎉</h1>
+                        <p class="mb-0 mt-2">Process Faculty Course Questionnaires</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <form id="filterForm">
+                            <div class="row mb-3">
+                                <div class="col-12">
+                                    <label for="instructor" class="form-label">Instructor Name</label>
+                                    <input type="text" class="form-control" id="instructor" 
+                                           placeholder="Start typing instructor name..." 
+                                           list="instructorList" autocomplete="off">
+<datalist id="instructorList">
+  <option value="McMahon, Susan">
+  <option value="Stephan, Andrew Perry">
+  <option value="Zechman, Sarah LC">
+  <option value="Rock, Steven Karl">
+  <option value="Rogers, Jonathan Lawrence">
+  <option value="Lazzeri, Nicole">
+  <option value="Morley, Susan">
+  <option value="Probert, Denise Carol">
+  <option value="Bondi, Salvatore">
+  <option value="Parker, Richard">
+  <option value="Maxwell, Christopher">
+  <option value="Giehl, Alan Joseph">
+  <option value="Milburn, Catherine C">
+  <option value="Speck, Sloan G">
+  <option value="Tice, Frances Mei-Lin Siu">
+  <option value="Cummings, Alex">
+  <option value="Straccia, Andrea Rooks">
+  <option value="Abeloe, Jaclyn">
+  <option value="Rosser, Casey">
+  <option value="Gschwindt DE Gyor, Marie Aurelie">
+  <option value="Young, Danielle">
+  <option value="Duffin, Lance Wade">
+  <option value="Middlebrooks, Zavannah Dior">
+  <option value="Guenther, Mary">
+  <option value="Clark, Heather">
+  <option value="Heymann, Stephen">
+  <option value="Napier, Vanessa Muriel">
+  <option value="Cowan, Sarah Rosenbaum">
+  <option value="Zechman, Darrell S">
+  <option value="Barday, Debbie Chien-Hui">
+  <option value="Elmblad, Christina Kathleen">
+  <option value="Baldner, Kelli Elizabeth">
+  <option value="Smith, Alfred Warner">
+  <option value="Hulse, Heidi">
+  <option value="Saha, Susmita">
+  <option value="Allen, J Ryan">
+  <option value="Arnett, Trina D">
+  <option value="Larsen, Kai R">
+  <option value="McGee, Micah">
+  <option value="Adams, Heather L">
+  <option value="Lacek, David">
+  <option value="Eargle, David">
+  <option value="Gasta, Mark Robert">
+  <option value="Ravishankar, Gurumurthi">
+  <option value="Stapp, Elizabeth">
+  <option value="Lyle, Catherine Carson">
+  <option value="Chapple, Nancy Alice">
+  <option value="Christoff, Lorna Colleen">
+  <option value="Kwaramba, Marcia">
+  <option value="Reznicek, Birdie C">
+  <option value="Meaney, Mark E">
+  <option value="Leach, Chris">
+  <option value="Edgar, Stacey">
+  <option value="Schaub, Kevin David">
+  <option value="Oest, Donald">
+  <option value="Carbone, Christopher J">
+  <option value="Swisher, Kristin Joy">
+  <option value="Cunningham, Cory Brooke">
+  <option value="Campbell, Kimberly M">
+  <option value="Shukri, Salma">
+  <option value="Smith, Julie Scher">
+  <option value="Bone, Jennifer Emerling">
+  <option value="Auslander, Bonnie">
+  <option value="Lionberger, Erin Leigh">
+  <option value="Lacy, J Andrew">
+  <option value="Young, E Morgan">
+  <option value="Lichtenstein, Donald">
+  <option value="Hekman, David R">
+  <option value="Van Wagoner, Hunter Phoenix">
+  <option value="Jennings, Tracy M">
+  <option value="Wegner, Jacqueline">
+  <option value="Mukhopadhyay, Tathagat">
+  <option value="Marshall, Nathan Thomas">
+  <option value="Mohr, Peter Justin">
+  <option value="Zhang, Xingtan">
+  <option value="Fisher, Christina">
+  <option value="Zikmund, Noah Todd">
+  <option value="Arnold, Mathew">
+  <option value="Seward, Lori Elizabeth">
+  <option value="Yilmaz, Ovunc">
+  <option value="Urrea Castano, Gloria">
+  <option value="Maciszewski, Michael Arthur">
+  <option value="Nunziato, Joshua">
+  <option value="Neil, Joshua Ryan">
+  <option value="Li, Ningzi">
+  <option value="Bisui, Sandip">
+  <option value="McMahon, Kevin Christopher">
+  <option value="Papuzza, Antonio">
+  <option value="Contreras, Jeremiah">
+  <option value="Merrell, Jeffrey Charles">
+  <option value="Rahemi, Hasti">
+  <option value="Gallo, John">
+  <option value="Crofton, Karen Marie">
+  <option value="Cass, David">
+  <option value="Virden, Thomas W">
+  <option value="Carson, Visda">
+  <option value="Dobrow, Joseph">
+  <option value="Alston, Eric Christopher">
+  <option value="Bei, Xiaoshu">
+  <option value="Fiske, Leigh Heeter">
+  <option value="Bhagat, Sanjai">
+  <option value="Albright, Hunter">
+  <option value="Werner, Walter">
+  <option value="Obreja, Iulian">
+  <option value="Brown, Daniel g">
+  <option value="Starn Jr, Harry Mohr">
+  <option value="Zender, Jaime Francis">
+  <option value="Buffa, Andrea">
+  <option value="Donchez, Robert M">
+  <option value="Hirschhorn, Diane Amy">
+  <option value="Waters, Brian Todd">
+  <option value="Gardner, David Eugene">
+  <option value="Sutton, Holly Meredith">
+  <option value="Davies, Shaun William">
+  <option value="Stutzer, Michael J.">
+  <option value="Robinson, Douglas">
+  <option value="Stephenson, Craig Allen">
+  <option value="Koc, Ozlem">
+  <option value="Donohew, Zachary">
+  <option value="Van Wesep, Edward D">
+  <option value="Laurion, Henry Richard">
+  <option value="Bumbaca, Federico">
+  <option value="Goren, Bahriye">
+  <option value="Franklin, James H">
+  <option value="Gross, David Michael">
+  <option value="Smith, Douglas Gene">
+  <option value="Campbell, Margaret">
+  <option value="Kennedy, Heather Lee">
+  <option value="Williams, Lawrence Edwin">
+  <option value="Edwards, Emily Jane">
+  <option value="Waddell, Jay L">
+  <option value="Montealegre, Ramiro">
+  <option value="Bennett, Douglas P">
+  <option value="Thibodeau, Thomas G">
+  <option value="Billings, Stephen Bradley">
+  <option value="Mankamyer Jr, Jack Laverne">
+  <option value="Denton, D. Keith">
+  <option value="Rodgers, Timothy William">
+  <option value="D'Esposito Jr, Pasquale George">
+  <option value="Hawk, Ashton Lewis">
+  <option value="Bailey, Wendy">
+  <option value="Laguna, Manuel">
+  <option value="Bein, Jonathan Weber">
+  <option value="Higgins, Brian">
+  <option value="Prinster, David Anthony">
+  <option value="Gladstone, Jonathan James">
+  <option value="Head, Margaret Teresa">
+  <option value="Ramos, Elmer">
+  <option value="He, Chuan">
+  <option value="Weintraub, William H">
+  <option value="Polson, Ksenia">
+  <option value="Cookson, John Anthony">
+  <option value="Sparling, Keith">
+  <option value="Macaluso, Gregg Richard">
+  <option value="Nuzum, Paul M">
+  <option value="Johnson, Stefanie Kathleen">
+  <option value="Barnes, Liza">
+  <option value="Rivin, Jessi Mariah">
+  <option value="Biegelsen, Katherine M">
+  <option value="Ghiselli, Kimberly E">
+  <option value="Gallagher, Emily">
+  <option value="Covrigaru, Kori">
+  <option value="Delprete, Anthony">
+  <option value="Woolf, Benjamin Vasey">
+  <option value="Schuetz, Kenneth R">
+  <option value="Gwozdz, Scott">
+  <option value="Nelson, Karen L">
+  <option value="Banks, Cynthia Lee">
+  <option value="Bercovitz, Janet">
+  <option value="Mueller, Erick M">
+  <option value="Lawrence, Stephen R">
+  <option value="Schonberger, Bryce Alexander">
+  <option value="Layman, Ethan">
+  <option value="Komor, Patricia Ann">
+  <option value="Foley, Shannon E">
+  <option value="Denapoli, Sarah">
+  <option value="Portilla, Jesus">
+  <option value="Ragonetti, Thomas John">
+  <option value="Harter, Aaron">
+  <option value="Hutchinson, Blake">
+  <option value="Lee, Jintae">
+  <option value="Williams, Andrew Clement">
+  <option value="Radpour, Nelufar Dianna">
+  <option value="Taylor, Stephen">
+  <option value="Brady, Matthew">
+  <option value="Lewis, Mary Beth">
+  <option value="Kornish, Laura Joyce">
+  <option value="Orton, Kimberly">
+  <option value="Meshnick, Jason">
+  <option value="Karns, Beverly">
+  <option value="Zhang, Huanan">
+  <option value="Hill, Scott">
+  <option value="Wang, Clare">
+  <option value="Chari, Mukund">
+  <option value="Khoshsokhan, Sina">
+  <option value="Reuer, Jeffrey J">
+  <option value="Tong, Wenfeng">
+  <option value="Volpone, Sabrina">
+  <option value="Anderson, Thomas M">
+  <option value="Imel, Spencer Raymond">
+  <option value="Vossen, Marie">
+  <option value="Embry, Elizabeth">
+  <option value="Gillespie-Brown, Jon Simon">
+  <option value="Garofolo, Andrew">
+  <option value="Hallen, Edward">
+  <option value="Whorton, Jody">
+  <option value="Jennings, Michael">
+  <option value="Bunch, Emma">
+  <option value="Douaire, George">
+  <option value="Loken, Alexandra C">
+  <option value="Szymanski, Michael">
+  <option value="Bernstein, Asaf">
+  <option value="Ikenberry, David L">
+  <option value="Raemdonck, Kimberly">
+  <option value="Fleming, Matthew W">
+  <option value="Santosh, Shrihari">
+  <option value="Kirby, Bradford">
+  <option value="Dickinson, Judith Ann">
+  <option value="Wobbekind, Richard L">
+  <option value="Drake, David">
+  <option value="Deriso, George Gergory">
+  <option value="York, Jeffrey">
+  <option value="Bruder, Daniel">
+  <option value="Myers, Michael Edwin">
+  <option value="Moyen, Nathalie">
+  <option value="Garcia, Diego">
+  <option value="Fernbach, Philip M">
+  <option value="Frank, Gary Robert">
+  <option value="Ferraro, Craig A">
+  <option value="Corradino, Arnold Sebastian">
+  <option value="Zhang, Rui">
+  <option value="Deng, Jing">
+  <option value="Laszlo, Karen">
+  <option value="Hansen, Scott W">
+  <option value="Lynch, John">
+  <option value="Reinholtz, Nicholas S">
+  <option value="Shriver, Scott">
+  <option value="Zhang, Dan">
+  <option value="Wang, Zhiyi">
+  <option value="Boss, Russel Wayne">
+  <option value="Cropanzano, Russell S">
+  <option value="Balkin, David">
+  <option value="Lacerenza, Christina Noelle">
+  <option value="Sears, Curtis R">
+  <option value="McQuade, Timothy James">
+  <option value="Kercheval, Michael Paul">
+  <option value="Smoot, Jennifer">
+  <option value="Meister, Matthew">
+  <option value="Starbuck, Joel Quintin">
+  <option value="Nelson, Thomas Cavett">
+  <option value="Egner, Taylor">
+  <option value="Emilson, Emanuela">
+  <option value="Lien, Alexander">
+  <option value="Helmers, John Rockwell">
+  <option value="Rolfe, Sikena Katrice">
+  <option value="LA Ganga, Linda Rose">
+  <option value="Andre, Quentin Patrick Claude">
+  <option value="Shin, Dongoh">
+  <option value="Kim, Jenny">
+  <option value="Cummings, Alexandra Christine">
+  <option value="Renegar, Christina Elmblad">
+  <option value="Venechuk, Heather Rebecca">
+  <option value="Forester, Sally Ann">
+  <option value="Stevens, Kelli Elizabeth">
+  <option value="Lloyd, Brooke Ann">
+  <option value="Wells, Zavannah Dior">
+  <option value="Allen, James Ryan">
+  <option value="Taylor, Steve">
+  <option value="Dark, Ethan">
+  <option value="Estrada, Erik Joseph">
+  <option value="Hyllested, Corey">
+  <option value="Egner, Taylor Adcock">
+  <option value="Stafford, Gabrielle Marks">
+  <option value="Li, Yuping">
+  <option value="Cho, Jae young">
+  <option value="Vossen, Thomas Wilhelmus">
+  <option value="Brown, David">
+  <option value="O'Brien, Tara">
+  <option value="Culver, Randal E">
+  <option value="Walcott, Nathan Garett">
+  <option value="Donchez, Robert Michael">
+  <option value="Thompson, Michelle Clara">
+  <option value="Bandyopadhyay, Arka Prava">
+  <option value="Martin, Wendy">
+  <option value="Winter, Margaret">
+  <option value="McGraw, Albert Peter">
+  <option value="Deon, Kenneth">
+  <option value="Gandhi, Fairy Rajesh">
+  <option value="Rivin, Jessica Mariah">
+  <option value="Lord, Kimberly E">
+  <option value="Jahn, Jody L">
+  <option value="Roof, Aaron">
+  <option value="Petrie, Steven Charles">
+  <option value="Moon, Seoyeon Katie">
+  <option value="Sang, Lan">
+  <option value="Yan, Sen">
+  <option value="Szentkiralyi, Levente">
+  <option value="Meyers Bass, Elizabeth Kay">
+  <option value="Pawliczek, Andrea">
+  <option value="Block, Brett">
+  <option value="Pisano, Al">
+  <option value="Rodriguez Gomez, Hector">
+  <option value="Walters, Anne Therese">
+  <option value="Fleming, Matthew">
+  <option value="Darius, Dries">
+  <option value="McNary, Judith Dickinoson">
+  <option value="Lau, Catherine Ruth">
+  <option value="Lorenzen, Peter">
+  <option value="Rolfe, Sirena Katrice">
+  <option value="Better, Marco Leonardo">
+  <option value="Pless, Shanti Das">
+  <option value="Holm, Hanno Edgar">
+  <option value="Lyu, Chengyi">
+  <option value="Dupre, Heather">
+  <option value="Liu, Liu">
+  <option value="Beckerman, Michael">
+  <option value="Peshut, Jeffrey John">
+  <option value="Painter, James">
+  <option value="Jacobsen, Merna">
+  <option value="Oest, Don">
+  <option value="Livengood, Scott">
+  <option value="Lien, Sasha">
+  <option value="Biegelsen, Casey">
+  <option value="Chapello, Lisa">
+  <option value="McNiece, Carly">
+  <option value="Thompson, Sara">
+  <option value="Orozco, Brionna">
+  <option value="Cisneros, Jorge E">
+  <option value="Moore, Laura">
+  <option value="Prochaska, Kevin">
+  <option value="Wall, Danielle">
+  <option value="Napier, Vanessa">
+  <option value="Lloyd, Brooke">
+  <option value="Hansen, Amanda">
+  <option value="Johnson, Zachary">
+  <option value="Allen, Ryan">
+  <option value="Rukhotskiy, Alexander Yuriy">
+  <option value="Burke, Sandra J">
+  <option value="Tang, Shaoqin">
+  <option value="Leenders, Hugo">
+  <option value="Darnell, Megan">
+  <option value="Colina, David">
+  <option value="Gwozdz, Ronald Scott">
+  <option value="Burnes, Ellen">
+  <option value="Lewis, Ryan C">
+  <option value="Spaenjers, Christophe">
+  <option value="Song, Jaehee">
+  <option value="Seelye, Elizabeth">
+  <option value="Winter, Meg">
+  <option value="Ventura, Santiago">
+  <option value="Dobolyi, David">
+  <option value="Dempsey, William Robert">
+  <option value="Mitchell, Rebecca">
+  <option value="Knapp, Kevin Anthony">
+  <option value="Stoller, Suzanne">
+  <option value="Handler, Abram">
+  <option value="Ploumitsakos, John Anthony">
+  <option value="Van Portfliet, Meghan">
+  <option value="Estrada, Erik">
+  <option value="Barasch, Alixandra">
+  <option value="Moss, Austin">
+  <option value="Harris, Cali LaRue">
+  <option value="Moss, James Frank">
+  <option value="Berk, Sarabeth Giblin">
+  <option value="Drain, Hannah Clair">
+  <option value="Boehmer, Briana Noelle">
+  <option value="McCall, Matt">
+  <option value="Ford, Scott">
+  <option value="Reznicek, Birdie">
+  <option value="Poskanzer, Ethan Joseph">
+  <option value="Culver, Randy">
+  <option value="Zhou, Guanqun">
+  <option value="Yerger, Daniel Mac Kenzie">
+  <option value="Weinberger, Gina Marie">
+  <option value="Wright, Christopher">
+  <option value="Hall, Shane Nikolaus">
+  <option value="Kong, Dejun">
+  <option value="Aizenman, Daniel">
+  <option value="Glynn, Kevin">
+  <option value="McGraw, Peter">
+  <option value="Bhattacharjee, Amit">
+  <option value="Fraser, Sterling Michael">
+  <option value="Gandhi, Fairy">
+  <option value="Sample, Timothy Alan">
+  <option value="Christensen, Brandon">
+  <option value="Jones, Clark Robert">
+  <option value="Marrero Trujillo, Veronica">
+  <option value="Lacy, Andy">
+  <option value="Imamura, Chris Keiji">
+  <option value="Brull, Gabe">
+  <option value="Rogers, Kate">
+  <option value="Schroder, Michelle">
+  <option value="Bell, Marcus">
+  <option value="Rodriguez, Rolando">
+  <option value="Robinson, Scott">
+  <option value="Griffin, Laura">
+  <option value="Sela, Dor">
+  <option value="Blumenthal, Maxwell">
+  <option value="Abis, Simona">
+  <option value="Shi, Ran">
+  <option value="Kong, Dejun "Tony"">
+  <option value="Robb, William Coulter">
+  <option value="Stodden, Deanne Renee">
+  <option value="Engel, Kent Richard">
+  <option value="Brimah, Amy Eisenhuth">
+  <option value="Skinner, Ashley Nicole">
+  <option value="Radtke, Alyssa">
+  <option value="Ploumitsakos, John">
+  <option value="Guven, Basak Melike">
+  <option value="Moroco, Laurie J.">
+  <option value="Decker, Mallory">
+  <option value="Jarek, Katie R">
+  <option value="Bunch, Emma Katherine">
+  <option value="Marks, Krista M">
+  <option value="Bernstein, David Matthew">
+  <option value="Moore, Cody Benjamin">
+  <option value="Baum, Kevin">
+  <option value="Stierwalt, Evangelia L">
+  <option value="Johnson, Luke">
+  <option value="Enterkin, Brittany">
+  <option value="Burger, Brea Desiree">
+  <option value="Overdyke, Scott Tucker">
+  <option value="Fox, Mairi-Jane Venesky">
+  <option value="Jones, William Shannon">
+  <option value="Crofton, Karen">
+  <option value="Gilpin, Scott Kirk">
+  <option value="Johnson, Jeff">
+  <option value="Markman, Gideon Dov">
+  <option value="Miao, Sentao">
+  <option value="Popken, Douglas">
+  <option value="Ahn, Gwen">
+  <option value="Starzl, Ravi Suryavanshi">
+  <option value="Thatcher, Jason">
+  <option value="Mitchell, Becca Lynne">
+  <option value="Amozegar, Mahdiyeh">
+  <option value="Cowan, Sarah">
+  <option value="Elganzoury, Ash">
+  <option value="Shen, Boyu">
+  <option value="Obeng, Emmanuella Takyiwah">
+  <option value="Han, Boyan">
+  <option value="Ortez, Kirsten">
+  <option value="Mertz, Zoe">
+  <option value="Rea, Rachel">
+  <option value="Winkler, Emily">
+  <option value="Sanchez, Laura Garcia">
+  <option value="Hoffman, Ben">
+  <option value="Susol, Mark Alexander">
+  <option value="Newell, Katrina D">
+  <option value="Alexander, Julie Kathryn">
+  <option value="Fabian, Carly Leilani">
+  <option value="Higgins, Matthew">
+  <option value="Zimmermann, Nicole">
+  <option value="Ragaglia, Ryan">
+  <option value="Hunter, Nicole">
+  <option value="Brown, Conner">
+  <option value="Marti Cunquero, Rafael">
+  <option value="Garrard, Vera">
+  <option value="Laverty, David Frank">
+  <option value="Duffy, Kyle R">
+  <option value="Yu, Xiaobo">
+  <option value="Cheston, James">
+  <option value="Butt, Jeffrey R">
+  <option value="Zeng, Ying">
+  <option value="Jeans, Russell">
+  <option value="Bryant, Mattie">
+  <option value="Zeas, Joanne">
+  <option value="Kilpela, Jennifer Mandeville">
+  <option value="Benson, Virginia Marie">
+  <option value="Zhang, Shuai">
+  <option value="Dixon, Leonard">
+  <option value="Hanssen, Kristian B">
+  <option value="Ramos, Manuel Guillermo">
+  <option value="Arisoy, Enfal">
+  <option value="Mehder, Serkan">
+  <option value="Lee, Anne">
+  <option value="Boos, Eric">
+  <option value="Kumawat, Shashi Kant">
+  <option value="Da Silva Dias, Rodrigo">
+  <option value="Jennings, Tracy">
+  <option value="Porter, Kirsten">
+  <option value="Ansari, Chris">
+  <option value="Hobbs, Devren Jean">
+  <option value="Guiliano, Philip">
+  <option value="Bahl, Marie Y">
+  <option value="Davenport, Roseanne">
+  <option value="Moskowitz, Georgie">
+  <option value="Michalski, Joseph Peter">
+  <option value="Liska, Rikke Marie">
+  <option value="Shankar, Nithya">
+  <option value="Wolkov, Seth Martin">
+  <option value="David, Maggie">
+  <option value="nasser, karlston">
+  <option value="O Neil, PJ">
+  <option value="Blythe, Paul">
+  <option value="Villa Betancur, Sebastian">
+</datalist>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="startYear" class="form-label">Start term</label>
+                                    <select class="form-select" id="startYear">
+                                        <option value="">Select start term...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="endYear" class="form-label">End term</label>
+                                    <select class="form-select" id="endYear" style="display: none;">
+                                        <option value="">Select end term...</option>
+                                    </select>
+                                    <div class="form-control" id="endYearDisplay" style="background-color: #f8f9fa; color: #6c757d;">
+                                        Select start term
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3" id="summerTermRow" style="display: none;">
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="includeSummer">
+                                        <label class="form-check-label" for="includeSummer">
+                                            Include summer terms
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                    Process FCQs
+                                </button>
+                            </div>
+                            
+                            <div class="mt-3 text-center">
+                                <small class="text-muted fst-italic" id="modeNote">
+                                    Note: Summer terms are automatically excluded from all results. Start and end terms are included in results. Analysis based on BUSN classes only. Undergraduate classes (4000-level and below) with enrollments below 10 are excluded from statistics.
+                                </small>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div id="results" class="mt-4" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_URL = 'https://hl9a4tetlj.execute-api.us-east-1.amazonaws.com/prod/fcq';
+        
+        document.getElementById('filterForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const resultsDiv = document.getElementById('results');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Loading...';
+            
+            resultsDiv.style.display = 'block';
+            resultsDiv.innerHTML = `
+                <div class="card">
+                    <div class="card-body text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-3 mb-0">Filtering data...</p>
+                    </div>
+                </div>
+            `;
+            
+            try {
+                // Build request payload
+                const payload = {};
+
+                const instructor = document.getElementById('instructor').value.trim();
+
+                // Validate that instructor is selected
+                if (!instructor) {
+                    throw new Error('Please enter an instructor name');
+                }
+
+                payload.instructor = instructor;
+
+                const startYear = document.getElementById('startYear').value;
+                const endYear = document.getElementById('endYear').value;
+
+                // Validate that we have both years
+                if (!startYear || !endYear) {
+                    throw new Error('Please select both start and end terms');
+                }
+
+                const startYearInt = parseInt(startYear);
+                const endYearInt = parseInt(endYear);
+
+                // Validate that end year is >= start year
+                if (endYearInt < startYearInt) {
+                    throw new Error('End term must be equal to or after start term');
+                }
+
+                // Generate list of terms from start to end
+                const terms = [];
+                const includeSummer = currentMode === 'Ad hoc' && document.getElementById('includeSummer').checked;
+
+                // Determine start and end term types based on mode
+                let startTerm, endTerm;
+                if (currentMode === 'FRPA') {
+                    // FRPA: Spring start -> Fall end (same year)
+                    startTerm = 'Spring';
+                    endTerm = 'Fall';
+                } else if (currentMode === 'Tenure' || currentMode === 'Full' || currentMode === 'PUEC') {
+                    // Tenure/Full/PUEC: Fall start -> Spring end
+                    startTerm = 'Fall';
+                    endTerm = 'Spring';
+                } else if (currentMode === 'Ad hoc') {
+                    // Ad hoc: Fall start -> Spring end
+                    startTerm = 'Fall';
+                    endTerm = 'Spring';
+                }
+
+                // Generate terms from start year to end year
+                for (let year = startYearInt; year <= endYearInt; year++) {
+                    // Add Fall term if we're in the range
+                    if (year === startYearInt && startTerm === 'Fall') {
+                        terms.push(`Fall ${year}`);
+                    } else if (year > startYearInt && year < endYearInt) {
+                        terms.push(`Fall ${year}`);
+                    } else if (year === endYearInt && endTerm === 'Fall') {
+                        terms.push(`Fall ${year}`);
+                    }
+
+                    // Add Spring term if we're in the range
+                    if (year === startYearInt && startTerm === 'Spring') {
+                        terms.push(`Spring ${year}`);
+                    } else if (year > startYearInt && year <= endYearInt) {
+                        if (year < endYearInt || (year === endYearInt && endTerm === 'Spring')) {
+                            terms.push(`Spring ${year}`);
+                        }
+                    }
+
+                    // Add Summer term if include_summer is checked and this is Ad hoc mode
+                    if (includeSummer && year >= startYearInt && year < endYearInt) {
+                        terms.push(`Summer ${year + 1}`);
+                    } else if (includeSummer && year === endYearInt && endTerm === 'Fall') {
+                        terms.push(`Summer ${year}`);
+                    }
+                }
+
+                // Set the terms array in the payload
+                payload.terms = terms;
+
+                console.log('Term list before sending to lambda:', terms);
+
+                // Make API call
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const responseText = await response.text();
+                console.log('Raw response:', responseText);
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}`);
+                }
+                
+                console.log('Parsed data:', data);
+                
+                // Handle the Lambda response format (with statusCode, headers, body)
+                if (data.statusCode && data.body) {
+                    // Lambda is returning the full response object
+                    const actualData = JSON.parse(data.body);
+                    console.log('actualData:', actualData);
+                    if (data.statusCode === 200 && actualData.success) {
+                        console.log('About to call displayResults with:', actualData.data.length, 'items');
+                        displayResults(actualData.data, actualData.count);
+                    } else {
+                        throw new Error(actualData.error || `Lambda error: ${data.statusCode}`);
+                    }
+                } else if (data.success) {
+                    // Direct response format
+                    displayResults(data.data, data.count);
+                } else {
+                    throw new Error(data.error || `Response error: ${JSON.stringify(data)}`);
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5 class="alert-heading">Error</h5>
+                        <p class="mb-0">${error.message}</p>
+                    </div>
+                `;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Get report';
+            }
+        });
+        
+        async function fetchCourseDataForAllInstructors(courseTitle, startYear, endYear, excludeInstructor) {
+            try {
+                const payload = {
+                    course_title: courseTitle
+                };
+
+                if (excludeInstructor) payload.exclude_instructor = excludeInstructor;
+
+                // Generate terms list (same as in main form submission)
+                if (startYear && endYear) {
+                    const terms = [];
+                    const startYearInt = parseInt(startYear);
+                    const endYearInt = parseInt(endYear);
+                    const includeSummer = currentMode === 'Ad hoc' && document.getElementById('includeSummer').checked;
+
+                    // Determine start and end term types based on mode
+                    let startTerm, endTerm;
+                    if (currentMode === 'FRPA') {
+                        startTerm = 'Spring';
+                        endTerm = 'Fall';
+                    } else if (currentMode === 'Tenure' || currentMode === 'Full' || currentMode === 'PUEC') {
+                        startTerm = 'Fall';
+                        endTerm = 'Spring';
+                    } else if (currentMode === 'Ad hoc') {
+                        startTerm = 'Fall';
+                        endTerm = 'Spring';
+                    }
+
+                    // Generate terms from start year to end year
+                    for (let year = startYearInt; year <= endYearInt; year++) {
+                        // Add Fall term if we're in the range
+                        if (year === startYearInt && startTerm === 'Fall') {
+                            terms.push(`Fall ${year}`);
+                        } else if (year > startYearInt && year < endYearInt) {
+                            terms.push(`Fall ${year}`);
+                        } else if (year === endYearInt && endTerm === 'Fall') {
+                            terms.push(`Fall ${year}`);
+                        }
+
+                        // Add Spring term if we're in the range
+                        if (year === startYearInt && startTerm === 'Spring') {
+                            terms.push(`Spring ${year}`);
+                        } else if (year > startYearInt && year <= endYearInt) {
+                            if (year < endYearInt || (year === endYearInt && endTerm === 'Spring')) {
+                                terms.push(`Spring ${year}`);
+                            }
+                        }
+
+                        // Add Summer term if include_summer is checked and this is Ad hoc mode
+                        if (includeSummer && year >= startYearInt && year < endYearInt) {
+                            terms.push(`Summer ${year + 1}`);
+                        } else if (includeSummer && year === endYearInt && endTerm === 'Fall') {
+                            terms.push(`Summer ${year}`);
+                        }
+                    }
+
+                    payload.terms = terms;
+                }
+                
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const responseText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}`);
+                }
+                
+                // Handle the Lambda response format
+                if (data.statusCode && data.body) {
+                    const actualData = JSON.parse(data.body);
+                    if (data.statusCode === 200 && actualData.success) {
+                        return actualData.data;
+                    } else {
+                        throw new Error(actualData.error || `Lambda error: ${data.statusCode}`);
+                    }
+                } else if (data.success) {
+                    return data.data;
+                } else {
+                    throw new Error(data.error || `Response error: ${JSON.stringify(data)}`);
+                }
+            } catch (error) {
+                console.error('Error fetching course data for all instructors:', error);
+                return null;
+            }
+        }
+        
+        function syncTermsHeights(courseIndex) {
+            if (!window.courseTermsHeights[courseIndex]) return;
+
+            const instructorCount = window.courseTermsHeights[courseIndex].instructorCount || 0;
+            const allInstructorsCount = window.courseTermsHeights[courseIndex].allInstructorsCount || 0;
+
+            // Get the max count
+            const maxCount = Math.max(instructorCount, allInstructorsCount);
+
+            // Calculate height based on max count
+            let height = 100; // default
+            if (maxCount > 5) {
+                height = 125;
+            } else if (maxCount < 3) {
+                height = 75;
+            }
+
+            // Apply height to both left and right Terms Taught rows
+            const leftRow = document.querySelector(`.terms-taught-row-left[data-course-index="${courseIndex}"] td:nth-child(2)`);
+            const rightRow = document.querySelector(`.terms-taught-row-right[data-course-index="${courseIndex}"] td:nth-child(2)`);
+
+            if (leftRow) {
+                leftRow.style.height = `${height}px`;
+            }
+            if (rightRow) {
+                rightRow.style.height = `${height}px`;
+            }
+        }
+
+        async function displayResults(data, count) {
+            console.log('displayResults called with data:', data, 'count:', count);
+            const resultsDiv = document.getElementById('results');
+
+            // Initialize global terms heights tracker
+            window.courseTermsHeights = {};
+
+            // Handle null or undefined data
+            if (!data || !Array.isArray(data)) {
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <h5 class="alert-heading">No Results Found</h5>
+                        <p class="mb-0">No data found matching your search criteria. This may mean the instructor did not teach any courses during the selected time period. Please try different filters.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Store data globally for download
+            currentData = data;
+            allInstructorsDataForDownload = [];
+
+            if (data.length === 0) {
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading">No Results</h5>
+                        <p class="mb-0">No data found matching your criteria. Try adjusting your filters.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Use actual data length if count is undefined
+            const actualCount = count || data.length;
+            
+            // Group data by course for better display
+            const courseGroups = {};
+            data.forEach(row => {
+                const courseKey = `${row.Sbjct} ${row.Crse} - ${row['Crse Title']}`;
+                if (!courseGroups[courseKey]) {
+                    courseGroups[courseKey] = [];
+                }
+                courseGroups[courseKey].push(row);
+            });
+            
+            console.log('Building HTML with courseGroups:', Object.keys(courseGroups).length, 'courses');
+            
+            // Get form values for additional queries
+            const startYear = document.getElementById('startYear').value;
+            const endYear = document.getElementById('endYear').value;
+            
+            let html = `
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <div>
+                            <h5 class="mb-0">Found ${Object.keys(courseGroups).length} courses for ${document.getElementById('instructor').value.trim() || 'instructor'}</h5>
+                            <small class="text-muted" style="font-size: 0.8em;">Searched from ${startYear ? 'Fall ' + startYear : 'earliest'} to ${endYear ? 'Spring ' + endYear : 'latest'}</small>
+                        </div>
+                        <button class="btn btn-outline-dark btn-sm" onclick="downloadData()">
+                            <svg width="16" height="16" fill="currentColor" class="bi bi-download me-1" viewBox="0 0 16 16">
+                                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                            </svg>
+                            Download CSV
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="accordion" id="courseAccordion">
+            `;
+            
+            // Set initial HTML structure
+            resultsDiv.innerHTML = html;
+            
+            // Process each course and fetch additional data asynchronously
+            const courseEntries = Object.entries(courseGroups);
+            
+            // First, render all courses with loading indicators
+            courseEntries.forEach(([courseKey, courseData], index) => {
+                const accordionId = `collapse${index}`;
+                
+                // Find terms data for this course
+                const termsData = courseData.find(row => row.Metric === 'Terms');
+                const termsCount = termsData && Array.isArray(termsData.Value) ? termsData.Value.length : 0;
+                const termsBadge = termsCount > 0 ? `<span class="badge bg-info ms-2">${termsCount} ${termsCount === 1 ? 'term' : 'terms'} taught</span>` : '';
+                
+                // Find total sections data for this course
+                const sectionsData = courseData.find(row => row.Metric === 'Total_Sections');
+                const sectionsCount = sectionsData ? sectionsData.Value : 0;
+                const sectionsBadge = sectionsCount > 0 ? `<span class="badge bg-secondary ms-2">${sectionsCount} ${sectionsCount === 1 ? 'section' : 'sections'} taught</span>` : '';
+                
+                let accordionItemHtml = `
+                    <div class="accordion-item" id="course-${index}">
+                        <h2 class="accordion-header" id="heading${index}">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${accordionId}" aria-expanded="false" aria-controls="${accordionId}">
+                                ${courseKey}${termsBadge}${sectionsBadge}
+                            </button>
+                        </h2>
+                        <div id="${accordionId}" class="accordion-collapse collapse" aria-labelledby="heading${index}" data-bs-parent="#courseAccordion">
+                            <div class="accordion-body">
+                                <div class="row" style="display: flex; align-items: stretch;">
+                                    <div class="col-md-6" style="display: flex; flex-direction: column; min-height: 100%;">
+                                        <h6 class="mb-3">Instructor: ${document.getElementById('instructor').value.trim() || 'This Instructor'}</h6>
+                                        <div class="table-responsive" style="flex: 1; display: flex; flex-direction: column;">
+                                            <table class="table table-sm table-hover mb-0" style="table-layout: fixed; width: 100%; flex: 1;">
+                                                <tbody>
+                `;
+                
+                // Build instructor-specific data
+                // Define metric categories and order
+                const metaMetrics = ['Total_Sections', 'Response_Rate', 'Terms'];
+                const courseMetrics = ['Interact', 'Reflect', 'Connect', 'Collab', 'Eval', 'Synth', 'Diverse'];
+                const instructorMetrics = ['Respect', 'Challenge', 'Creative', 'Discuss', 'Feedback', 'Grading', 'Question', 'Tech'];
+
+                // Separate metrics into categories
+                const metaRows = [];
+                const courseRows = [];
+                const instructorRows = [];
+
+                courseData.forEach(row => {
+                    if (row.Metric === 'Count') return; // Skip Count metric
+
+                    if (metaMetrics.includes(row.Metric)) {
+                        metaRows.push(row);
+                    } else if (courseMetrics.includes(row.Metric)) {
+                        courseRows.push(row);
+                    } else if (instructorMetrics.includes(row.Metric)) {
+                        instructorRows.push(row);
+                    }
+                });
+
+                // Sort each category by the defined order
+                metaRows.sort((a, b) => metaMetrics.indexOf(a.Metric) - metaMetrics.indexOf(b.Metric));
+                courseRows.sort((a, b) => courseMetrics.indexOf(a.Metric) - courseMetrics.indexOf(b.Metric));
+                instructorRows.sort((a, b) => instructorMetrics.indexOf(a.Metric) - instructorMetrics.indexOf(b.Metric));
+
+                // Calculate terms count for this instructor and store it globally
+                let instructorTermsCount = 0;
+                const termsRow = metaRows.find(row => row.Metric === 'Terms');
+                if (termsRow && Array.isArray(termsRow.Value)) {
+                    instructorTermsCount = termsRow.Value.length;
+                }
+                // Store in a global map for later access
+                window.courseTermsHeights[index] = { instructorCount: instructorTermsCount };
+
+                // Render meta metrics (Total Sections, Response Rate, Terms Taught)
+                metaRows.forEach(row => {
+                    let value = row.Value;
+                    let badgeClass = 'bg-secondary';
+                    let displayMetric = row.Metric;
+                    let useBadge = true;
+                    let rowClass = '';
+
+                    if (row.Metric === 'Response_Rate') {
+                        badgeClass = 'bg-warning';
+                        displayMetric = 'Response Rate';
+                        value = typeof value === 'number' ? (value * 100).toFixed(1) + '%' : value;
+                        rowClass = 'response-rate-row-left';
+                    } else if (row.Metric === 'Terms') {
+                        displayMetric = 'Terms Taught';
+                        useBadge = false;
+                        if (Array.isArray(value)) {
+                            value = value.join(', ');
+                        }
+                        rowClass = 'terms-taught-row-left';
+                    } else if (row.Metric === 'Total_Sections') {
+                        displayMetric = 'Total Sections';
+                        badgeClass = 'bg-secondary';
+                        rowClass = 'total-sections-row-left';
+                    }
+
+                    const displayValue = useBadge ? `<span class="badge ${badgeClass}">${value}</span>` : value;
+
+                    accordionItemHtml += `
+                        <tr class="${rowClass}" data-course-index="${index}">
+                            <td style="width: 40%; overflow: hidden; text-overflow: ellipsis; vertical-align: top; border-bottom: none;">${displayMetric}</td>
+                            <td style="width: 60%; word-wrap: break-word; white-space: ${row.Metric === 'Terms' ? 'normal' : 'nowrap'}; overflow: hidden; ${row.Metric === 'Terms' ? 'overflow-y: auto; display: block;' : ''} vertical-align: top; border-bottom: none;">${displayValue}</td>
+                        </tr>
+                    `;
+                });
+
+                // Add "this course" label
+                if (courseRows.length > 0) {
+                    accordionItemHtml += `
+                        <tr>
+                            <td colspan="2" style="padding-top: 12px; padding-bottom: 4px; ${metaRows.length > 0 ? 'border-top: 1px solid #e5e7eb;' : ''} border-bottom: none;">
+                                <span style="color: #9ca3af; font-size: 0.85em; font-style: italic;">this course</span>
+                            </td>
+                        </tr>
+                    `;
+                }
+
+                // Render course-level metrics
+                courseRows.forEach(row => {
+                    let value = row.Value;
+                    let badgeClass = 'bg-secondary';
+                    let displayMetric = row.Metric;
+                    let useBadge = true;
+
+                    if (typeof value === 'number') {
+                        badgeClass = value >= 4 ? 'bg-success' : value >= 3 ? 'bg-warning' : 'bg-danger';
+                    }
+
+                    const displayValue = useBadge ? `<span class="badge ${badgeClass}">${value}</span>` : value;
+
+                    accordionItemHtml += `
+                        <tr>
+                            <td style="width: 40%; overflow: hidden; text-overflow: ellipsis; vertical-align: top; border-bottom: none;">${displayMetric}</td>
+                            <td style="width: 60%; word-wrap: break-word; white-space: nowrap; overflow: hidden; vertical-align: top; border-bottom: none;">${displayValue}</td>
+                        </tr>
+                    `;
+                });
+
+                // Add separator and "this instructor" label
+                if (instructorRows.length > 0) {
+                    accordionItemHtml += `
+                        <tr>
+                            <td colspan="2" style="padding-top: 12px; padding-bottom: 4px; border-top: 1px solid #e5e7eb; border-bottom: none;">
+                                <span style="color: #9ca3af; font-size: 0.85em; font-style: italic;">this instructor</span>
+                            </td>
+                        </tr>
+                    `;
+                }
+
+                // Render instructor-level metrics
+                instructorRows.forEach(row => {
+                    let value = row.Value;
+                    let badgeClass = 'bg-secondary';
+                    let displayMetric = row.Metric;
+                    let useBadge = true;
+
+                    if (typeof value === 'number') {
+                        badgeClass = value >= 4 ? 'bg-success' : value >= 3 ? 'bg-warning' : 'bg-danger';
+                    }
+
+                    const displayValue = useBadge ? `<span class="badge ${badgeClass}">${value}</span>` : value;
+
+                    accordionItemHtml += `
+                        <tr>
+                            <td style="width: 40%; overflow: hidden; text-overflow: ellipsis; vertical-align: top; border-bottom: none;">${displayMetric}</td>
+                            <td style="width: 60%; word-wrap: break-word; white-space: nowrap; overflow: hidden; vertical-align: top; border-bottom: none;">${displayValue}</td>
+                        </tr>
+                    `;
+                });
+                
+                accordionItemHtml += `
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6" style="display: flex; flex-direction: column; min-height: 100%;">
+                                        <h6 class="mb-3">All Other Instructors During Time Period</h6>
+                                        <div id="all-instructors-${index}" class="d-flex justify-content-center" style="flex: 1; display: flex; flex-direction: column;">
+                                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                            <span class="ms-2 text-muted">Loading comparison data...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Add this accordion item to the accordion
+                const accordion = document.getElementById('courseAccordion');
+                accordion.innerHTML += accordionItemHtml;
+            });
+            
+            // Then fetch the additional data for each course
+            courseEntries.forEach(async ([courseKey, courseData], index) => {
+                // Get course title for the additional query
+                const courseTitle = courseData[0]['Crse Title'];
+
+                // Get the instructor name to exclude from the comparison
+                const instructor = document.getElementById('instructor').value.trim();
+
+                // Fetch data for all instructors for this course, excluding the main instructor
+                const allInstructorsData = await fetchCourseDataForAllInstructors(courseTitle, startYear, endYear, instructor);
+                
+                // Store all instructors data for download
+                if (allInstructorsData && allInstructorsData.length > 0) {
+                    allInstructorsDataForDownload.push(...allInstructorsData);
+                }
+                
+                // Update the "All Instructors" section for this course
+                const allInstructorsContainer = document.getElementById(`all-instructors-${index}`);
+                
+                if (!allInstructorsContainer) return; // Skip if element not found
+                
+                // Build all instructors data
+                if (allInstructorsData && allInstructorsData.length > 0) {
+                    // Group by course (should only be one course)
+                    const allInstructorsCourseGroups = {};
+                    allInstructorsData.forEach(row => {
+                        const courseKey = `${row.Sbjct} ${row.Crse} - ${row['Crse Title']}`;
+                        if (!allInstructorsCourseGroups[courseKey]) {
+                            allInstructorsCourseGroups[courseKey] = [];
+                        }
+                        allInstructorsCourseGroups[courseKey].push(row);
+                    });
+
+                    const firstCourseData = Object.values(allInstructorsCourseGroups)[0];
+                    
+                    let allInstructorsHtml = `
+                        <div class="table-responsive" style="flex: 1; display: flex; flex-direction: column;">
+                            <table class="table table-sm table-hover mb-0" style="table-layout: fixed; width: 100%; flex: 1;">
+                                <tbody>
+                    `;
+
+                    // Define metric categories and order
+                    const metaMetrics = ['Total_Sections', 'Response_Rate', 'Terms'];
+                    const courseMetrics = ['Interact', 'Reflect', 'Connect', 'Collab', 'Eval', 'Synth', 'Diverse'];
+                    const instructorMetrics = ['Respect', 'Challenge', 'Creative', 'Discuss', 'Feedback', 'Grading', 'Question', 'Tech'];
+
+                    // Separate metrics into categories
+                    const metaRows = [];
+                    const courseRows = [];
+                    const instructorRows = [];
+
+                    firstCourseData.forEach(row => {
+                        if (row.Metric === 'Count') return; // Skip Count metric
+
+                        if (metaMetrics.includes(row.Metric)) {
+                            metaRows.push(row);
+                        } else if (courseMetrics.includes(row.Metric)) {
+                            courseRows.push(row);
+                        } else if (instructorMetrics.includes(row.Metric)) {
+                            instructorRows.push(row);
+                        }
+                    });
+
+                    // Sort each category by the defined order
+                    metaRows.sort((a, b) => metaMetrics.indexOf(a.Metric) - metaMetrics.indexOf(b.Metric));
+                    courseRows.sort((a, b) => courseMetrics.indexOf(a.Metric) - courseMetrics.indexOf(b.Metric));
+                    instructorRows.sort((a, b) => instructorMetrics.indexOf(a.Metric) - instructorMetrics.indexOf(b.Metric));
+
+                    // Calculate terms count for all instructors
+                    let allInstructorsTermsCount = 0;
+                    const allTermsRow = metaRows.find(row => row.Metric === 'Terms');
+                    if (allTermsRow && Array.isArray(allTermsRow.Value)) {
+                        allInstructorsTermsCount = allTermsRow.Value.length;
+                    }
+
+                    // Store all instructors count
+                    window.courseTermsHeights[index].allInstructorsCount = allInstructorsTermsCount;
+
+                    // Render meta metrics (Total Sections, Response Rate, Terms Taught)
+                    metaRows.forEach(row => {
+                        let value = row.Value;
+                        let badgeClass = 'bg-secondary';
+                        let displayMetric = row.Metric;
+                        let useBadge = true;
+                        let rowClass = '';
+
+                        if (row.Metric === 'Response_Rate') {
+                            badgeClass = 'bg-warning';
+                            displayMetric = 'Response Rate';
+                            value = typeof value === 'number' ? (value * 100).toFixed(1) + '%' : value;
+                            rowClass = 'response-rate-row-right';
+                        } else if (row.Metric === 'Terms') {
+                            displayMetric = 'Terms Taught';
+                            useBadge = false;
+                            if (Array.isArray(value)) {
+                                value = value.join(', ');
+                            }
+                            rowClass = 'terms-taught-row-right';
+                        } else if (row.Metric === 'Total_Sections') {
+                            displayMetric = 'Total Sections';
+                            badgeClass = 'bg-secondary';
+                            rowClass = 'total-sections-row-right';
+                        }
+
+                        const displayValue = useBadge ? `<span class="badge ${badgeClass}">${value}</span>` : value;
+
+                        allInstructorsHtml += `
+                            <tr class="${rowClass}" data-course-index="${index}">
+                                <td style="width: 40%; overflow: hidden; text-overflow: ellipsis; vertical-align: top; border-bottom: none;">${displayMetric}</td>
+                                <td style="width: 60%; word-wrap: break-word; white-space: ${row.Metric === 'Terms' ? 'normal' : 'nowrap'}; overflow: hidden; ${row.Metric === 'Terms' ? 'overflow-y: auto; display: block;' : ''} vertical-align: top; border-bottom: none;">${displayValue}</td>
+                            </tr>
+                        `;
+                    });
+
+                    // After inserting HTML, sync the heights on both sides
+                    setTimeout(() => {
+                        syncTermsHeights(index);
+                    }, 100);
+
+                    // Add "this course" label
+                    if (courseRows.length > 0) {
+                        allInstructorsHtml += `
+                            <tr>
+                                <td colspan="2" style="padding-top: 12px; padding-bottom: 4px; ${metaRows.length > 0 ? 'border-top: 1px solid #e5e7eb;' : ''} border-bottom: none;">
+                                    <span style="color: #9ca3af; font-size: 0.85em; font-style: italic;">this course</span>
+                                </td>
+                            </tr>
+                        `;
+                    }
+
+                    // Render course-level metrics
+                    courseRows.forEach(row => {
+                        let value = row.Value;
+                        let badgeClass = 'bg-secondary';
+                        let displayMetric = row.Metric;
+                        let useBadge = true;
+
+                        if (typeof value === 'number') {
+                            badgeClass = value >= 4 ? 'bg-success' : value >= 3 ? 'bg-warning' : 'bg-danger';
+                        }
+
+                        const displayValue = useBadge ? `<span class="badge ${badgeClass}">${value}</span>` : value;
+
+                        allInstructorsHtml += `
+                            <tr>
+                                <td style="width: 40%; overflow: hidden; text-overflow: ellipsis; vertical-align: top; border-bottom: none;">${displayMetric}</td>
+                                <td style="width: 60%; word-wrap: break-word; white-space: nowrap; overflow: hidden; vertical-align: top; border-bottom: none;">${displayValue}</td>
+                            </tr>
+                        `;
+                    });
+
+                    // Add separator and "this instructor" label
+                    if (instructorRows.length > 0) {
+                        allInstructorsHtml += `
+                            <tr>
+                                <td colspan="2" style="padding-top: 12px; padding-bottom: 4px; border-top: 1px solid #e5e7eb; border-bottom: none;">
+                                    <span style="color: #9ca3af; font-size: 0.85em; font-style: italic;">this instructor</span>
+                                </td>
+                            </tr>
+                        `;
+                    }
+
+                    // Render instructor-level metrics
+                    instructorRows.forEach(row => {
+                        let value = row.Value;
+                        let badgeClass = 'bg-secondary';
+                        let displayMetric = row.Metric;
+                        let useBadge = true;
+
+                        if (typeof value === 'number') {
+                            badgeClass = value >= 4 ? 'bg-success' : value >= 3 ? 'bg-warning' : 'bg-danger';
+                        }
+
+                        const displayValue = useBadge ? `<span class="badge ${badgeClass}">${value}</span>` : value;
+
+                        allInstructorsHtml += `
+                            <tr>
+                                <td style="width: 40%; overflow: hidden; text-overflow: ellipsis; vertical-align: top; border-bottom: none;">${displayMetric}</td>
+                                <td style="width: 60%; word-wrap: break-word; white-space: nowrap; overflow: hidden; vertical-align: top; border-bottom: none;">${displayValue}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    allInstructorsHtml += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    
+                    allInstructorsContainer.innerHTML = allInstructorsHtml;
+                } else {
+                    // No other instructors data (either 0 rows returned or no data)
+                    allInstructorsContainer.innerHTML = `
+                        <div class="alert alert-secondary">
+                            <small>There are no other instructors for this course</small>
+                        </div>
+                    `;
+                }
+            });
+            
+            // Close the main HTML structure
+            setTimeout(() => {
+                const accordion = document.getElementById('courseAccordion');
+                const parentDiv = accordion.parentElement;
+                parentDiv.innerHTML += `
+                        </div>
+                    </div>
+                `;
+            }, 100);
+        }
+        
+        // Global variable to store current data for download
+        let currentData = null;
+        let allInstructorsDataForDownload = [];
+        
+        function downloadData() {
+            if ((!currentData || currentData.length === 0) && (!allInstructorsDataForDownload || allInstructorsDataForDownload.length === 0)) {
+                alert('No data to download');
+                return;
+            }
+            
+            console.log('Download data - This Instructor:', currentData?.length || 0, 'rows');
+            console.log('Download data - All Instructors:', allInstructorsDataForDownload?.length || 0, 'rows');
+            
+            // Create a comparison table structure
+            const comparisonData = new Map();
+            
+            // Process current instructor data
+            if (currentData && currentData.length > 0) {
+                currentData.forEach(row => {
+                    // Skip Count metric (same as UI filtering)
+                    if (row.Metric === 'Count') {
+                        return;
+                    }
+                    
+                    const key = `${row.Sbjct}_${row.Crse}_${row['Crse Title']}_${row.Metric}`;
+                    if (!comparisonData.has(key)) {
+                        comparisonData.set(key, {
+                            'Subject': row.Sbjct,
+                            'Course': row.Crse,
+                            'Course_Title': row['Crse Title'],
+                            'Metric': row.Metric,
+                            'This_Instructor': '',
+                            'All_Instructors': ''
+                        });
+                    }
+                    
+                    let value = row.Value;
+                    // Handle arrays (like Terms)
+                    if (Array.isArray(value)) {
+                        value = value.join('; ');
+                    }
+                    comparisonData.get(key)['This_Instructor'] = value;
+                });
+            }
+            
+            // Process all instructors data
+            if (allInstructorsDataForDownload && allInstructorsDataForDownload.length > 0) {
+                allInstructorsDataForDownload.forEach(row => {
+                    // Skip Count metric (same as UI filtering)
+                    if (row.Metric === 'Count') {
+                        return;
+                    }
+                    
+                    const key = `${row.Sbjct}_${row.Crse}_${row['Crse Title']}_${row.Metric}`;
+                    if (!comparisonData.has(key)) {
+                        comparisonData.set(key, {
+                            'Subject': row.Sbjct,
+                            'Course': row.Crse,
+                            'Course_Title': row['Crse Title'],
+                            'Metric': row.Metric,
+                            'This_Instructor': '',
+                            'All_Instructors': ''
+                        });
+                    }
+                    
+                    let value = row.Value;
+                    // Handle arrays (like Terms)
+                    if (Array.isArray(value)) {
+                        value = value.join('; ');
+                    }
+                    comparisonData.get(key)['All_Instructors'] = value;
+                });
+            }
+            
+            // Convert to array
+            const comparisonArray = Array.from(comparisonData.values());
+            
+            if (comparisonArray.length === 0) {
+                alert('No comparison data to download');
+                return;
+            }
+            
+            // Create CSV headers
+            const headers = ['Subject', 'Course', 'Course_Title', 'Metric', 'This_Instructor', 'All_Instructors'];
+            
+            // Create CSV content
+            const csvContent = [
+                headers.join(','),
+                ...comparisonArray.map(row => 
+                    headers.map(header => {
+                        let value = row[header] || '';
+                        // Escape values containing commas
+                        if (typeof value === 'string' && value.includes(',')) {
+                            value = '"' + value + '"';
+                        }
+                        return value;
+                    }).join(',')
+                )
+            ].join('\n');
+            
+            // Create and trigger download
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            
+            // Generate filename with current date and filters
+            const instructor = document.getElementById('instructor').value.trim();
+            const startYear = document.getElementById('startYear').value;
+            const endYear = document.getElementById('endYear').value;
+            
+            let filename = 'fcq_data';
+            if (allInstructorsDataForDownload.length > 0) {
+                filename += '_all_instructors';
+            } else if (instructor) {
+                filename += `_${instructor.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            }
+            if (startYear) filename += `_${startYear}`;
+            if (endYear) filename += `_to_${endYear}`;
+            filename += `_${new Date().toISOString().split('T')[0]}.csv`;
+            
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+        
+        // Global mode variable
+        let currentMode = null;
+
+        // Function to set mode and update UI
+        function setMode(mode) {
+            currentMode = mode;
+
+            // Update button styles
+            document.querySelectorAll('.banner button').forEach(btn => {
+                btn.classList.remove('btn-secondary');
+                btn.classList.add('btn-outline-secondary');
+            });
+
+            // Map mode to button ID
+            const modeToButtonId = {
+                'PUEC': 'puecBtn',
+                'FRPA': 'frpaBtn',
+                'Tenure': 'tenureBtn',
+                'Full': 'fullBtn',
+                'Ad hoc': 'adhocBtn'
+            };
+
+            const activeBtn = document.getElementById(modeToButtonId[mode]);
+            activeBtn.classList.remove('btn-outline-secondary');
+            activeBtn.classList.add('btn-secondary');
+
+            const startYearSelect = document.getElementById('startYear');
+            const endYearSelect = document.getElementById('endYear');
+            const endYearDisplay = document.getElementById('endYearDisplay');
+            const modeNote = document.getElementById('modeNote');
+            const summerTermRow = document.getElementById('summerTermRow');
+            const includeSummer = document.getElementById('includeSummer');
+
+            // Remove all existing event listeners
+            startYearSelect.removeEventListener('change', updateEndYearForPUEC);
+            startYearSelect.removeEventListener('change', updateEndYearForFRPA);
+            startYearSelect.removeEventListener('change', updateEndYearForTenure);
+            startYearSelect.removeEventListener('change', updateEndYearForFull);
+            startYearSelect.removeEventListener('change', validateAdHocDates);
+            endYearSelect.removeEventListener('change', validateAdHocDates);
+            includeSummer.removeEventListener('change', updateAdHocNote);
+
+            // Reset dropdowns and repopulate based on mode
+            repopulateDropdowns(mode);
+
+            if (mode === 'PUEC') {
+                startYearSelect.disabled = false;
+                endYearSelect.style.display = 'none';
+                endYearDisplay.style.display = 'block';
+                summerTermRow.style.display = 'none';
+                startYearSelect.addEventListener('change', updateEndYearForPUEC);
+                modeNote.textContent = "Note: Summer terms are automatically excluded from all results. Start and end terms are included in results. Analysis based on BUSN classes only. Undergraduate classes (4000-level and below) with enrollments below 10 are excluded from statistics.";
+                if (startYearSelect.value) {
+                    updateEndYearForPUEC();
+                }
+            } else if (mode === 'FRPA') {
+                startYearSelect.disabled = false;
+                endYearSelect.style.display = 'none';
+                endYearDisplay.style.display = 'block';
+                summerTermRow.style.display = 'none';
+                startYearSelect.addEventListener('change', updateEndYearForFRPA);
+                modeNote.textContent = "Note: Summer terms are automatically excluded from all results. Start and end terms are included in data. Analysis based on BUSN classes only. Undergraduate classes (4000-level and below) with enrollments below 10 are excluded from statistics.";
+                if (startYearSelect.value) {
+                    updateEndYearForFRPA();
+                }
+            } else if (mode === 'Tenure') {
+                startYearSelect.disabled = false;
+                endYearSelect.style.display = 'none';
+                endYearDisplay.style.display = 'block';
+                summerTermRow.style.display = 'none';
+                startYearSelect.addEventListener('change', updateEndYearForTenure);
+                modeNote.textContent = "Note: Summer terms are automatically excluded from all results. Start and end terms are included in results. Analysis based on BUSN classes only. Undergraduate classes (4000-level and below) with enrollments below 10 are excluded from statistics.";
+                if (startYearSelect.value) {
+                    updateEndYearForTenure();
+                }
+            } else if (mode === 'Full') {
+                startYearSelect.disabled = false;
+                endYearSelect.style.display = 'none';
+                endYearDisplay.style.display = 'block';
+                summerTermRow.style.display = 'none';
+                startYearSelect.addEventListener('change', updateEndYearForFull);
+                modeNote.textContent = "Note: Summer terms are automatically excluded from all results. Start and end terms are included in results. Analysis based on BUSN classes only. Undergraduate classes (4000-level and below) with enrollments below 10 are excluded from statistics.";
+                if (startYearSelect.value) {
+                    updateEndYearForFull();
+                }
+            } else if (mode === 'Ad hoc') {
+                startYearSelect.disabled = false;
+                endYearSelect.style.display = 'block';
+                endYearDisplay.style.display = 'none';
+                summerTermRow.style.display = 'block';
+                endYearSelect.disabled = false;
+
+                // Add validation listeners for Ad hoc mode
+                startYearSelect.addEventListener('change', validateAdHocDates);
+                endYearSelect.addEventListener('change', validateAdHocDates);
+                includeSummer.addEventListener('change', updateAdHocNote);
+
+                // Set initial note text
+                updateAdHocNote();
+            }
+        }
+
+        // Function to repopulate dropdowns based on mode
+        function repopulateDropdowns(mode) {
+            const currentYear = new Date().getFullYear();
+            const startYearSelect = document.getElementById('startYear');
+            const endYearSelect = document.getElementById('endYear');
+            const endYearDisplay = document.getElementById('endYearDisplay');
+
+            // Clear existing options
+            startYearSelect.innerHTML = '<option value="">Select start term...</option>';
+
+            // Set end year content based on mode
+            if (mode === 'Ad hoc') {
+                endYearSelect.innerHTML = '<option value="">Select end term...</option>';
+            } else {
+                endYearDisplay.textContent = 'Select start term';
+            }
+
+            if (mode === 'FRPA') {
+                // FRPA: Start term should be Spring
+                for (let year = 2016; year <= currentYear + 1; year++) {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = `Spring ${year}`;
+                    startYearSelect.appendChild(option);
+                }
+                // End year dropdown will be populated by the update function
+            } else if (mode === 'Tenure' || mode === 'Full') {
+                // Tenure/Full: Start term should be Fall
+                for (let year = 2015; year <= currentYear; year++) {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = `Fall ${year}`;
+                    startYearSelect.appendChild(option);
+                }
+            } else {
+                // PUEC and Ad hoc: Fall terms for start
+                for (let year = 2015; year <= currentYear; year++) {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = `Fall ${year}`;
+                    startYearSelect.appendChild(option);
+                }
+            }
+
+            // For Ad hoc mode, also populate end year dropdown
+            if (mode === 'Ad hoc') {
+                for (let year = 2002; year <= currentYear + 1; year++) {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = `Spring ${year}`;
+                    endYearSelect.appendChild(option);
+                }
+            }
+        }
+
+        // Function to update end year for PUEC mode
+        function updateEndYearForPUEC() {
+            const startYearSelect = document.getElementById('startYear');
+            const endYearSelect = document.getElementById('endYear');
+            const endYearDisplay = document.getElementById('endYearDisplay');
+
+            if (startYearSelect.value && currentMode === 'PUEC') {
+                const startYear = parseInt(startYearSelect.value);
+                const endYear = startYear + 3;
+                endYearDisplay.textContent = `Spring ${endYear}`;
+                endYearSelect.innerHTML = `<option value="${endYear}" selected>Spring ${endYear}</option>`;
+            } else {
+                endYearDisplay.textContent = 'Select start term';
+            }
+        }
+
+        // Function to update end year for FRPA mode
+        function updateEndYearForFRPA() {
+            const startYearSelect = document.getElementById('startYear');
+            const endYearSelect = document.getElementById('endYear');
+            const endYearDisplay = document.getElementById('endYearDisplay');
+
+            if (startYearSelect.value && currentMode === 'FRPA') {
+                const startYear = parseInt(startYearSelect.value);
+                const endYear = startYear; // Same year, Fall term
+                endYearDisplay.textContent = `Fall ${endYear}`;
+                endYearSelect.innerHTML = `<option value="${endYear}" selected>Fall ${endYear}</option>`;
+            } else {
+                endYearDisplay.textContent = 'Select start term';
+            }
+        }
+
+        // Function to update end year for Tenure mode
+        function updateEndYearForTenure() {
+            const startYearSelect = document.getElementById('startYear');
+            const endYearSelect = document.getElementById('endYear');
+            const endYearDisplay = document.getElementById('endYearDisplay');
+
+            if (startYearSelect.value && currentMode === 'Tenure') {
+                const startYear = parseInt(startYearSelect.value);
+                const endYear = startYear + 5;
+                endYearDisplay.textContent = `Spring ${endYear}`;
+                endYearSelect.innerHTML = `<option value="${endYear}" selected>Spring ${endYear}</option>`;
+            } else {
+                endYearDisplay.textContent = 'Select start term';
+            }
+        }
+
+        // Function to update end year for Full mode
+        function updateEndYearForFull() {
+            const startYearSelect = document.getElementById('startYear');
+            const endYearSelect = document.getElementById('endYear');
+            const endYearDisplay = document.getElementById('endYearDisplay');
+
+            if (startYearSelect.value && currentMode === 'Full') {
+                const startYear = parseInt(startYearSelect.value);
+                const endYear = startYear + 10;
+                endYearDisplay.textContent = `Spring ${endYear}`;
+                endYearSelect.innerHTML = `<option value="${endYear}" selected>Spring ${endYear}</option>`;
+            } else {
+                endYearDisplay.textContent = 'Select start term';
+            }
+        }
+
+        // Function to update Ad hoc mode note based on summer term checkbox
+        function updateAdHocNote() {
+            const includeSummer = document.getElementById('includeSummer');
+            const modeNote = document.getElementById('modeNote');
+
+            if (currentMode === 'Ad hoc') {
+                if (includeSummer.checked) {
+                    modeNote.textContent = "Note: Start and end terms are included in results. Analysis based on BUSN classes only. Undergraduate classes (4000-level and below) with enrollments below 10 are excluded from statistics.";
+                } else {
+                    modeNote.textContent = "Note: Summer terms are automatically excluded from all results. Start and end terms are included in results. Analysis based on BUSN classes only. Undergraduate classes (4000-level and below) with enrollments below 10 are excluded from statistics.";
+                }
+                modeNote.style.color = '';
+            }
+        }
+
+        // Function to validate Ad hoc mode dates and filter end year options
+        function validateAdHocDates() {
+            const startYearSelect = document.getElementById('startYear');
+            const endYearSelect = document.getElementById('endYear');
+            const modeNote = document.getElementById('modeNote');
+
+            if (currentMode === 'Ad hoc') {
+                // Filter end year options based on start year selection
+                if (startYearSelect.value) {
+                    const startYear = parseInt(startYearSelect.value);
+                    const currentYear = new Date().getFullYear();
+                    const selectedEndYear = endYearSelect.value;
+
+                    // Clear and repopulate end year dropdown with valid options only
+                    endYearSelect.innerHTML = '<option value="">Select end term...</option>';
+
+                    // For Fall start terms, the earliest valid Spring end term is the following year
+                    // Fall 2017 -> earliest Spring end is Spring 2018
+                    const earliestEndYear = startYear + 1;
+
+                    // Add options from earliest valid end year onwards
+                    for (let year = earliestEndYear; year <= currentYear + 1; year++) {
+                        const option = document.createElement('option');
+                        option.value = year;
+                        option.textContent = `Spring ${year}`;
+
+                        // Restore selection if it's still valid
+                        if (year.toString() === selectedEndYear && year >= earliestEndYear) {
+                            option.selected = true;
+                        }
+
+                        endYearSelect.appendChild(option);
+                    }
+                }
+
+                // Validate current selection
+                if (startYearSelect.value && endYearSelect.value) {
+                    const startYear = parseInt(startYearSelect.value);
+                    const endYear = parseInt(endYearSelect.value);
+                    const earliestEndYear = startYear + 1;
+
+                    if (endYear < earliestEndYear) {
+                        modeNote.innerHTML = '<span style="color: #dc3545;">Error: End term must be after start term (Fall to Spring sequence).</span>';
+                        modeNote.style.color = '#dc3545';
+                    } else {
+                        updateAdHocNote(); // Use the note update function to set proper text
+                    }
+                } else {
+                    updateAdHocNote(); // Use the note update function to set proper text
+                }
+            }
+        }
+
+        // Initialize page on load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set default mode to PUEC
+            setMode('PUEC');
+
+            // Set default start year for PUEC mode
+            const currentYear = new Date().getFullYear();
+            const startYearSelect = document.getElementById('startYear');
+            startYearSelect.value = currentYear - 3;
+            updateEndYearForPUEC();
+        });
+    </script>
+
+    <footer style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid #e5e7eb; color: #6c757d; font-size: 0.9em;">
+        <div>Version 1.0.1</div>
+        <div style="margin-top: 5px;">Please send suggestions or bug reports to abram.handler@gmail.com</div>
+    </footer>
+</body>
+</html>
