@@ -140,7 +140,7 @@ def load_df():
         # Use HTTPS instead of HTTP - CloudFront redirects HTTP to HTTPS
         df = pd.read_csv("https://d2o3ke970u6qa7.cloudfront.net/fcq.csv")
         
-        _validate_df(_df)
+        _validate_df(df)
         # only BUSN courses are considered
         df = df[df["College"] == "BUSN"].copy()
         return df
