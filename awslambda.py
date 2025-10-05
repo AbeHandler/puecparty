@@ -6,6 +6,7 @@ for the webiste
 import pandas as pd
 import json
 import re
+import sys
 import traceback
 
 
@@ -131,9 +132,10 @@ def _validate_df(_df):
             'Term',
             'Term_cd',
             'Year'}
-    assert set(df.columns) == COLS, "Invalid data format"
-    first_digit = df["Crse"].astype(str).str[0].astype(int)
-    assert ((first_digit >= 1) & (first_digit <= 7)).all(), "Found Crse values outside 1–7 range"
+    assert set(_df.columns) == COLS, "Invalid data format"
+    first_digit = _df["Crse"].astype(str).str[0].astype(int)
+    bad_values = _df.loc[~((first_digit >= 1) & (first_digit <= 9)), "Crse"]
+    assert ((first_digit >= 1) & (first_digit <= 9)).all(), "Found Crse values outside 1–7 range"
 
 def load_df():
     try:
@@ -145,6 +147,16 @@ def load_df():
         df = df[df["College"] == "BUSN"].copy()
         return df
     except Exception as e:
+        error_type, error_value, tb = sys.exc_info()
+        tb_info = traceback.extract_tb(tb)[-1]  # last call in the stack
+
+        error_file = tb_info.filename
+        error_line = tb_info.lineno
+        error_func = tb_info.name
+        error_msg = str(e)
+
+        print(f"Error occurred in {error_file}, line {error_line}, in {error_func}: {error_msg}")
+        print(traceback.format_exc())
         raise Exception(f"Failed to load CSV data: {str(e)}")
 
 def filter_data(
