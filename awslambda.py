@@ -11,13 +11,13 @@ import traceback
 
 def validiate_mode(mode):
     if type(mode) != str:
-        raise ValueError(f"Invalid mode:'{mode}'. Must be'calendar' or'academic'")
+        raise ValueError(f"Invalid mode: '{mode}'. Must be'calendar' or 'academic'")
     if mode == "calendar":
         return True
     elif mode == "academic":
         return True
     else:
-        raise ValueError(f"Invalid mode:'{mode}'. Must be'calendar' or'academic'")
+        raise ValueError(f"Invalid mode: '{mode}'. Must be 'calendar' or 'academic'")
     
     return True
 
@@ -70,7 +70,7 @@ def validate_terms(terms):
     for term in terms:
         match = re.match(pattern, term)
         if not match:
-            raise ValueError(f"Invalid term format:'{term}'. Expected format:'Fall 2024'")
+            raise ValueError(f"Invalid term format: '{term}'. Expected format: 'Fall 2024'")
         
         term_name, year = match.groups()
         
