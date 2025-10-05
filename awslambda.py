@@ -133,8 +133,7 @@ def _validate_df(_df):
             'Term_cd',
             'Year'}
     assert set(df.columns) == COLS, "Invalid data format"
-
-    df = df["Crse"].astype(str).str[0].astype(int)
+    first_digit = df["Crse"].astype(str).str[0].astype(int)
     assert ((first_digit >= 1) & (first_digit <= 7)).all(), "Found Crse values outside 1–7 range"
 
 def load_df():
@@ -226,6 +225,7 @@ def filter_data(
     # define ValidForStats
     filtered_df["ValidForStats"] = ((filtered_df["Enroll"] >= 10) & (first_digit <= 4)) | (first_digit > 4)
 
+    # things like terms taught, response rate etc we always want but sometimes we will exclude w/ < 10 
     grouped_df = (
         filtered_df.groupby(["Sbjct", "Crse", "Crse Title"])
         .agg(
@@ -237,6 +237,7 @@ def filter_data(
         .reset_index()
     )
 
+    # these are only for enrollment >= 10
     metrics_df = (
         filtered_df[filtered_df["ValidForStats"]]
         .groupby(["Sbjct", "Crse", "Crse Title"])
