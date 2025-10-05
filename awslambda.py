@@ -10,12 +10,14 @@ import traceback
 
 
 def validiate_mode(mode):
+    if type(mode) != str:
+        raise ValueError(f"Invalid mode:'{mode}'. Must be'calendar' or'academic'")
     if mode == "calendar":
         return True
     elif mode == "academic":
         return True
     else:
-        raise ValueError(f"Invalid mode: '{mode}'. Must be 'calendar' or 'academic'")
+        raise ValueError(f"Invalid mode:'{mode}'. Must be'calendar' or'academic'")
     
     return True
 
@@ -53,7 +55,7 @@ def generate_terms(start_year, end_year, mode="calendar", include_summer=False):
     return terms
 
 def validate_terms(terms):
-    """Validate terms in format ['Spring 2024', 'Fall 2024']"""
+    """Validate terms in format ['Spring 2024','Fall 2024']"""
 
     if terms is None:
         raise ValueError(f"You must provide a valid list of terms to use the lambda")
@@ -68,13 +70,13 @@ def validate_terms(terms):
     for term in terms:
         match = re.match(pattern, term)
         if not match:
-            raise ValueError(f"Invalid term format: '{term}'. Expected format: 'Fall 2024'")
+            raise ValueError(f"Invalid term format:'{term}'. Expected format:'Fall 2024'")
         
         term_name, year = match.groups()
         
         # Additional validation
         if term_name not in valid_terms:
-            raise ValueError(f"Invalid term: '{term_name}'. Must be one of {valid_terms}")
+            raise ValueError(f"Invalid term:'{term_name}'. Must be one of {valid_terms}")
         
         year_int = int(year)
         if year_int < 1900 or year_int > 2030:  # reasonable year range
@@ -85,8 +87,6 @@ def validate_terms(terms):
     return validated_terms
 
 def round_cols(df, round_these_cols=None, decimals=2):
-    """
-    """
     for col in round_these_cols:
         df[col] = df[col].round(decimals)
         # format with trailing zeros
@@ -94,7 +94,63 @@ def round_cols(df, round_these_cols=None, decimals=2):
     
     return df
 
+def _validate_df(_df):
+    '''Check that the input data from S3 matches the input format'''
+    assert set(_df["Term"].unique()) == set(["Fall", "Spring", "Summer"])
+    assert "BUSN" in _df["College"].unique()
+    assert len(_df) > 0
+    COLS = {'# Resp',
+            'Campus',
+            'Challenge',
+            'Collab',
+            'College',
+            'Connect',
+            'Contrib',
+            'Creative',
+            'Crse',
+            'Crse Lvl',
+            'Crse Title',
+            'Crse Type',
+            'Dept',
+            'Discuss',
+            'Diverse',
+            'Enroll',
+            'Eval',
+            'Feedback',
+            'Grading',
+            'Instr Grp',
+            'Instructor Name',
+            'Interact',
+            'Questions',
+            'Reflect',
+            'Resp Rate',
+            'Respect',
+            'Sbjct',
+            'Sect',
+            'Synth',
+            'Tech',
+            'Term',
+            'Term_cd',
+            'Year'}
+    assert set(df.columns) == COLS, "Invalid data format"
+
+    df = df["Crse"].astype(str).str[0].astype(int)
+    assert ((first_digit >= 1) & (first_digit <= 7)).all(), "Found Crse values outside 1–7 range"
+
+def load_df():
+    try:
+        # Use HTTPS instead of HTTP - CloudFront redirects HTTP to HTTPS
+        df = pd.read_csv("https://d2o3ke970u6qa7.cloudfront.net/fcq.csv")
+        
+        _validate_df(_df)
+        # only BUSN courses are considered
+        df = df[df["College"] == "BUSN"].copy()
+        return df
+    except Exception as e:
+        raise Exception(f"Failed to load CSV data: {str(e)}")
+
 def filter_data(
+    df,
     instructor=None,
     course_title=None,
     terms=None,
@@ -103,21 +159,9 @@ def filter_data(
     """Filter and process FCQ data"""
 
     # terms is a list like ["Spring 2024", "Fall 2024"]
-
-    try:
-        # Use HTTPS instead of HTTP - CloudFront redirects HTTP to HTTPS
-        df = pd.read_csv("https://d2o3ke970u6qa7.cloudfront.net/fcq.csv")
-    except Exception as e:
-        raise Exception(f"Failed to load CSV data: {str(e)}")
-
-    # only BUSN courses are considered
-    df = df[df["College"] == "BUSN"].copy()
-
     validate_terms(terms)
 
     df["Year"] = df["Year"].astype(int)
-
-    assert set(df["Term"].unique()) == set(["Fall", "Spring", "Summer"])
 
     df["Term_Year"] = df["Term"] + " " + df["Year"].astype(str)
 
@@ -129,7 +173,7 @@ def filter_data(
     if instructor is not None:
         # Replace assertion with proper error handling
         if instructor not in available_instructors:
-            raise ValueError(f"Instructor '{instructor}' not found. Available instructors: {len(available_instructors)} total")
+            raise ValueError(f"Instructor'{instructor}' not found. Available instructors: {len(available_instructors)} total")
         
         # Filter by instructor
         filtered_df = filtered_df[filtered_df["Instructor Name"] == instructor].copy()
@@ -141,10 +185,11 @@ def filter_data(
     if course_title:
         available_courses = df["Crse Title"].unique().tolist()
         if course_title not in available_courses:
-            raise ValueError(f"Course title '{course_title}' not found")
+            raise ValueError(f"Course title'{course_title}' not found")
         filtered_df = filtered_df[filtered_df["Crse Title"] == course_title].copy()     
 
     if exclude_instructor:
+        # this is used to compute the average over all instructors
         filtered_df = filtered_df[filtered_df["Instructor Name"] != exclude_instructor].copy()
 
     # Check if we have any data left after filtering
@@ -163,9 +208,6 @@ def filter_data(
     missing_columns = [col for col in metrics if col not in filtered_df.columns]
     if missing_columns:
         raise ValueError(f"Missing required columns: {missing_columns}")
-    
-    if instructor is not None:
-        print(f"total rows {len(filtered_df)}")
 
     # Create a section identifier to count unique sections per term
     filtered_df["Section_ID"] = filtered_df["Term_Year"] + "_" + filtered_df["Sect"].astype(str)
@@ -248,14 +290,16 @@ def lambda_handler(event, context):
         
         print(f"Parameters: instructor={instructor}, course_title={course_title}, terms={terms}")
         
+        df = load_df()
+
         # Call your filter function
         filtered_data = filter_data(
+            df=df,
             instructor=instructor,
             course_title=course_title,
             exclude_instructor=exclude_instructor,
             terms=terms
         )
-        
 
         if len(filtered_data) == 0:
             result = []
@@ -271,15 +315,15 @@ def lambda_handler(event, context):
             result = formatted_data.to_dict('records')
         
         return {
-            'statusCode': 200,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
+           'statusCode': 200,
+           'headers': {
+               'Content-Type':'application/json',
+               'Access-Control-Allow-Origin':'*'
             },
-            'body': json.dumps({
-                'success': True,
-                'data': result,
-                'count': len(result)
+           'body': json.dumps({
+               'success': True,
+               'data': result,
+               'count': len(result)
             })
         }
         
@@ -298,19 +342,19 @@ def lambda_handler(event, context):
         print(f"Context: {context}")
         
         return {
-            'statusCode': 500,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
+           'statusCode': 500,
+           'headers': {
+               'Content-Type':'application/json',
+               'Access-Control-Allow-Origin':'*'
             },
-            'body': json.dumps({
-                'success': False,
-                'error': error_message,
-                'error_type': error_type,
-                'debug_info': {
-                    'has_error_message': len(error_message) > 0,
-                    'original_error_str': str(e),
-                    'error_repr': repr(e)
+           'body': json.dumps({
+               'success': False,
+               'error': error_message,
+               'error_type': error_type,
+               'debug_info': {
+                   'has_error_message': len(error_message) > 0,
+                   'original_error_str': str(e),
+                   'error_repr': repr(e)
                 }
             })
         }
