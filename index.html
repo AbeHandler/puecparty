@@ -139,6 +139,10 @@
     </style>
 
     <script>
+    const NOTE_TEXT_DEFAULT = "Note: Summer terms are automatically excluded from all results. Start and end terms are included in results. Analysis based on BUSN classes only. Undergraduate classes (i.e., 4000-level and below) with enrollments below 10 are excluded from statistics.";
+    const NOTE_TEXT_FRPA = "Note: Summer terms are automatically excluded from all results. Start and end terms are included in data. Analysis based on BUSN classes only. Undergraduate classes (i.e., 4000-level and below) with enrollments below 10 are excluded from statistics.";
+    const NOTE_TEXT_AD_HOC_WITH_SUMMER = "Note: Start and end terms are included in results. Analysis based on BUSN classes only. Undergraduate classes (i.e., 4000-level and below) with enrollments below 10 are excluded from statistics.";
+
     const tooltips = {
       Interact: "Interact with other students in a respectful way",
       Reflect: "Reflect on what I was learning",
@@ -769,10 +773,9 @@
                                     Process FCQs
                                 </button>
                             </div>
-                            
+
                             <div class="mt-3 text-center">
                                 <small class="text-muted fst-italic" id="modeNote">
-                                    Note: Summer terms are automatically excluded from all results. Start and end terms are included in results. Analysis based on BUSN classes only. Undergraduate classes (4000-level and below) with enrollments below 10 are excluded from statistics.
                                 </small>
                             </div>
                         </form>
@@ -1742,7 +1745,7 @@
                 endYearDisplay.style.display = 'block';
                 summerTermRow.style.display = 'none';
                 startYearSelect.addEventListener('change', updateEndYearForPUEC);
-                modeNote.textContent = "Note: Summer terms are automatically excluded from all results. Start and end terms are included in results. Analysis based on BUSN classes only. Undergraduate classes (4000-level and below) with enrollments below 10 are excluded from statistics.";
+                modeNote.textContent = NOTE_TEXT_DEFAULT;
                 if (startYearSelect.value) {
                     updateEndYearForPUEC();
                 }
@@ -1752,7 +1755,7 @@
                 endYearDisplay.style.display = 'block';
                 summerTermRow.style.display = 'none';
                 startYearSelect.addEventListener('change', updateEndYearForFRPA);
-                modeNote.textContent = "Note: Summer terms are automatically excluded from all results. Start and end terms are included in data. Analysis based on BUSN classes only. Undergraduate classes (4000-level and below) with enrollments below 10 are excluded from statistics.";
+                modeNote.textContent = NOTE_TEXT_FRPA;
                 if (startYearSelect.value) {
                     updateEndYearForFRPA();
                 }
@@ -1762,7 +1765,7 @@
                 endYearDisplay.style.display = 'block';
                 summerTermRow.style.display = 'none';
                 startYearSelect.addEventListener('change', updateEndYearForTenure);
-                modeNote.textContent = "Note: Summer terms are automatically excluded from all results. Start and end terms are included in results. Analysis based on BUSN classes only. Undergraduate classes (4000-level and below) with enrollments below 10 are excluded from statistics.";
+                modeNote.textContent = NOTE_TEXT_DEFAULT;
                 if (startYearSelect.value) {
                     updateEndYearForTenure();
                 }
@@ -1772,7 +1775,7 @@
                 endYearDisplay.style.display = 'block';
                 summerTermRow.style.display = 'none';
                 startYearSelect.addEventListener('change', updateEndYearForFull);
-                modeNote.textContent = "Note: Summer terms are automatically excluded from all results. Start and end terms are included in results. Analysis based on BUSN classes only. Undergraduate classes (4000-level and below) with enrollments below 10 are excluded from statistics.";
+                modeNote.textContent = NOTE_TEXT_DEFAULT;
                 if (startYearSelect.value) {
                     updateEndYearForFull();
                 }
@@ -1919,9 +1922,9 @@
 
             if (currentMode === 'Ad hoc') {
                 if (includeSummer.checked) {
-                    modeNote.textContent = "Note: Start and end terms are included in results. Analysis based on BUSN classes only. Undergraduate classes (4000-level and below) with enrollments below 10 are excluded from statistics.";
+                    modeNote.textContent = NOTE_TEXT_AD_HOC_WITH_SUMMER;
                 } else {
-                    modeNote.textContent = "Note: Summer terms are automatically excluded from all results. Start and end terms are included in results. Analysis based on BUSN classes only. Undergraduate classes (4000-level and below) with enrollments below 10 are excluded from statistics.";
+                    modeNote.textContent = NOTE_TEXT_DEFAULT;
                 }
                 modeNote.style.color = '';
             }
