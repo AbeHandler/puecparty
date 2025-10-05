@@ -90,8 +90,7 @@ def round_cols(df, round_these_cols=None, decimals=2):
     for col in round_these_cols:
         df[col] = df[col].round(decimals)
         # format with trailing zeros
-        df[col] = df[col].apply(lambda x: f"{x:.{decimals}f}" if pd.notnull(x) else x)
-    
+        df[col] = df[col].apply(lambda x: f"{x:.{decimals}f}" if (pd.notnull(x) and x != "NA") else x)
     return df
 
 def _validate_df(_df):
@@ -156,6 +155,10 @@ def filter_data(
     exclude_instructor=None,
 ):
     """Filter and process FCQ data"""
+
+    if exclude_instructor is not None:
+        if course_title is None:
+            raise ValueError("You must specify a course to exclude an instructor")
 
     # terms is a list like ["Spring 2024", "Fall 2024"]
     validate_terms(terms)
