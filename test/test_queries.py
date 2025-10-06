@@ -141,3 +141,24 @@ class TestQueries:
             terms=terms_2022
         )
         assert float(df.iloc[0]["Tech"]) == 4.64
+
+    def test_connect_cunningham(self, sample_df):
+        """Test that using exclude_instructor without course_title raises ValueError"""
+
+        all_years = sample_df['Year'].unique()
+        terms_2022 = []
+        for year in all_years:
+            if year >= 2023 and year < 2025:
+                for term in ['Spring', 'Summer', 'Fall']:
+                    term_str = f"{term} {year}"
+                    # Check if term exists in data
+                    if len(sample_df[(sample_df['Term'] == term) & (sample_df['Year'] == year)]) > 0:
+                        terms_2022.append(term_str)
+
+        df = filter_data(
+            df=sample_df,
+            instructor="Cunningham, Cory Brooke",
+            course_title="Crisis Communication",
+            terms=terms_2022
+        )
+        assert float(df.iloc[0]["Connect"]) == 5.0
