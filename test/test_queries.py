@@ -162,3 +162,19 @@ class TestQueries:
             terms=terms_2022
         )
         assert float(df.iloc[0]["Connect"]) == 5.0
+
+    def test_managerial_communication_exclude_cunningham_questions(self, sample_df):
+        """Test Managerial Communication excluding Cunningham has Questions average of 4.9"""
+
+        # Build terms list: Spring 2022, Fall 2023, Spring 2024, Fall 2024, Spring 2025
+        terms = ["Fall 2022", "Spring 2023", "Fall 2023", "Spring 2024", "Fall 2024", "Spring 2025"]
+
+        df = filter_data(
+            df=sample_df,
+            course_title="Managerial Communications",
+            exclude_instructor="Cunningham, Cory Brooke",
+            terms=terms
+        )
+
+        assert len(df) == 1, "Should return one course"
+        assert float(df.iloc[0]["Questions"]) == 4.9
