@@ -21,3 +21,9 @@ def test_busn_long_scores_text():
 	# to get this number by hand, look at 42.xlsx in fcq_processor.py and run 
 	# =AVERAGEIFS(AD8:AD74250, D8:D74250, "BUSN", B8:B74250, 2024, AD8:AD74250, "<>0") in row 74251 col AF
 
+def test_busn_long_scores_ah_2023():
+	scores = get_longitudinal_scores(instructor_name="Handler, Abram")
+	number = [o for o in scores if o["Year"] == 2023 and o["Metric"] == "Grading" and o['Instructor'] == 'Handler, Abram'][0]["Score"]
+	assert round(number, 2) == 4.15
+	# to get this number by hand, look at 42.xlsx in fcq_processor.py and run 
+	# =AVERAGEIFS(AD8:AD74250, D8:D74250, "BUSN", B8:B74250, 2024, AD8:AD74250, "<>0", J8:J74250, "Handler, Abram")
