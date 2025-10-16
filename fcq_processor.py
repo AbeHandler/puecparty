@@ -15,6 +15,49 @@ from awslambda import filter_data
 from awslambda import format_data
 from awslambda import generate_terms
 
+def get_scores_by_year():
+    # Load data
+    df = pd.read_csv("/tmp/fcq.csv")
+
+    # Filter to BUSN
+    df_busn = df[df["College"] == "BUSN"]
+
+    # Evaluation columns
+    eval_cols = [
+        "Interact","Reflect","Connect","Collab","Contrib","Eval","Synth",
+        "Diverse","Respect","Challenge","Creative","Discuss","Feedback",
+        "Grading","Questions","Tech"
+    ]
+
+    # --- Instructor-level yearly averages ---
+    df_instructor = (
+        df_busn.groupby(["Year", "Instructor Name"])[eval_cols]
+        .mean()
+        .reset_index()
+    )
+
+    # Add per-instructor overall average
+    df_instructor["Overall_Avg"] = df_instructor[eval_cols].mean(axis=1)
+
+    # --- School-wide yearly averages ---
+    df_school = (
+        df_busn.groupby("Year")[eval_cols]
+        .mean()
+        .reset_index()
+    )
+    df_school["Instructor Name"] = "ALL_BUSN"
+    df_school["Overall_Avg"] = df_school[eval_cols].mean(axis=1)
+
+    # --- Combine ---
+    df_combined = pd.concat([df_instructor, df_school], ignore_index=True)
+
+    # Save to CSV
+    df_combined.to_csv("/tmp/scoreby_year_2020_present.csv", index=False)
+
+    cmd = 'aws s3 cp /tmp/scoreby_year_2020_present.csv s3://ucbfcqs/scoreby_year_2020_present.csv'
+    os.system(cmd)
+
+
 def get_unique_instructors():
     '''
     This is just a simple helper that can be used to populate the instructor

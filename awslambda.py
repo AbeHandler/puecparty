@@ -22,6 +22,44 @@ def validiate_mode(mode):
     
     return True
 
+def get_longitudinal_scores(path="https://d2o3ke970u6qa7.cloudfront.net/scoreby_year_2020_present.csv", instructor_name="Doe, John"):
+    df = pd.read_csv("https://d2o3ke970u6qa7.cloudfront.net/scoreby_year_2020_present.csv")
+
+    # Evaluation columns (exclude non-metrics)
+    eval_cols = [
+        "Interact","Reflect","Connect","Collab","Contrib","Eval","Synth",
+        "Diverse","Respect","Challenge","Creative","Discuss","Feedback",
+        "Grading","Questions","Tech","Overall_Avg"
+    ]
+
+    # Filter for the instructor and ALL_BUSN
+    df_filtered = df[df["Instructor Name"].isin([instructor_name, "ALL_BUSN"])]
+
+    # Melt to long format
+    df_long = df_filtered.melt(
+        id_vars=["Year", "Instructor Name"],
+        value_vars=eval_cols,
+        var_name="Metric",
+        value_name="Score"
+    )
+
+    # Drop missing scores
+    df_long = df_long.dropna(subset=["Score"])
+
+    # Convert to JSONL-style list of dicts
+    records = [
+        {
+            "Year": int(row["Year"]),
+            "Instructor": row["Instructor Name"],
+            "Metric": row["Metric"],
+            "Score": float(row["Score"])
+        }
+        for _, row in df_long.iterrows()
+    ]
+
+    return records
+
+
 def generate_terms(start_year, end_year, mode="calendar", include_summer=False):
     """
     Generate terms based on mode and summer inclusion
@@ -291,18 +329,46 @@ def format_data(df):
     formatted_result = format_result_table_long(df)
     return prioritize_metrics_sort_corrected(formatted_result)
 
+def handle_longitudinal_scores_event(event):
+    """Handle request for instructor + BUSN-wide evaluation scores"""
+    path = event.get("path", "/tmp/scoreby_year_2020_present.csv")
+    instructor = event.get("instructor")
+
+    if not instructor:
+        raise ValueError("Missing required field: 'instructor'")
+
+    data = get_longitudinal_scores(path=path, instructor_name=instructor)
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+        },
+        "body": json.dumps({
+            "success": True,
+            "data": data,
+            "count": len(data)
+        })
+    }
+
 def lambda_handler(event, context):
     """
     AWS Lambda handler function
     """
     try:
         print(f"Received event: {json.dumps(event)}")
-        
+        action = event.get("action")
+        if action is not None and action == "get_longitudinal_scores":
+            return handle_longitudinal_scores_event(event)
+        else:
+            pass
+
         # Extract parameters from event
         instructor = event.get('instructor')
         course_title = event.get('course_title')
         terms = event.get('terms')
         exclude_instructor = event.get('exclude_instructor')
+
         
         print(f"Parameters: instructor={instructor}, course_title={course_title}, terms={terms}")
         
