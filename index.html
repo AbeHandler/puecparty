@@ -6,6 +6,7 @@
     <title>PUEC</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥳</text></svg>">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body {
             background-color: #ffffff;
@@ -135,6 +136,91 @@
         }
         table td {
             overflow: visible !important;
+        }
+        .sparkline-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 20px;
+            max-width: 600px;
+        }
+        .sparkline-facet {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-bottom: 1px solid #e5e7eb;
+            background-color: #fafafa;
+        }
+        .sparkline-title {
+            font-size: 0.85em;
+            font-weight: 600;
+            width: 100px;
+            flex-shrink: 0;
+            color: #333;
+        }
+        .sparkline-svg {
+            flex-grow: 1;
+            height: 40px;
+        }
+        .sparkline-line {
+            fill: none;
+            stroke-width: 1.5;
+        }
+        .sparkline-instructor {
+            stroke: #2563eb;
+        }
+        .sparkline-busn {
+            stroke: #dc2626;
+            stroke-dasharray: 3,3;
+        }
+        .sparkline-dot {
+            fill: white;
+            stroke-width: 1.5;
+        }
+        .sparkline-legend {
+            font-size: 0.75em;
+            margin-top: 5px;
+        }
+        .sparkline-legend-item {
+            display: inline-block;
+            margin-right: 10px;
+        }
+        .sparkline-legend-line {
+            display: inline-block;
+            width: 20px;
+            height: 2px;
+            vertical-align: middle;
+            margin-right: 4px;
+        }
+        .sparkline-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .sparkline-tab-button {
+            padding: 8px 16px;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            font-weight: 500;
+            color: #6b7280;
+            transition: all 0.2s;
+            margin-bottom: -2px;
+        }
+        .sparkline-tab-button:hover {
+            color: #000000;
+        }
+        .sparkline-tab-button.active {
+            color: #000000;
+            border-bottom-color: #000000;
+        }
+        .sparkline-tab-content {
+            display: none;
+        }
+        .sparkline-tab-content.active {
+            display: block;
         }
     </style>
 
@@ -842,6 +928,202 @@
             }
         }
 
+        function createSparklineChart(containerId, metricGroups, sortedYears, instructor, viewType = 'course') {
+            const container = d3.select(`#${containerId}`);
+            container.html(''); // Clear existing content
+
+            // Filter metrics based on viewType
+            const instructorMetrics = ['Respect', 'Challenge', 'Creative', 'Discuss', 'Feedback', 'Grading', 'Questions', 'Tech'];
+            const courseMetrics = ['Interact', 'Reflect', 'Connect', 'Collab', 'Eval', 'Synth', 'Diverse'];
+            const allMetrics = Object.keys(metricGroups).sort();
+            const metrics = viewType === 'instructor'
+                ? allMetrics.filter(m => instructorMetrics.includes(m)).sort()
+                : allMetrics.filter(m => courseMetrics.includes(m)).sort();
+
+            // Create a facet for each metric
+            metrics.forEach(metric => {
+                const facetDiv = container.append('div')
+                    .attr('class', 'sparkline-facet');
+
+                facetDiv.append('div')
+                    .attr('class', 'sparkline-title')
+                    .text(metric);
+
+                const svg = facetDiv.append('svg')
+                    .attr('class', 'sparkline-svg')
+                    .attr('viewBox', '0 0 400 40')
+                    .attr('preserveAspectRatio', 'xMidYMid meet');
+
+                const margin = {top: 5, right: 10, bottom: 5, left: 10};
+                const width = 400 - margin.left - margin.right;
+                const height = 40 - margin.top - margin.bottom;
+
+                const g = svg.append('g')
+                    .attr('transform', `translate(${margin.left},${margin.top})`);
+
+                // Prepare data for this metric
+                const instructorData = sortedYears.map(year => {
+                    const record = metricGroups[metric].instructor.find(r => r.Year === year);
+                    return {year, value: record ? record.Score : null};
+                }).filter(d => d.value !== null);
+
+                const busnData = sortedYears.map(year => {
+                    const record = metricGroups[metric].allBusn.find(r => r.Year === year);
+                    return {year, value: record ? record.Score : null};
+                }).filter(d => d.value !== null);
+
+                // Skip if no data
+                if (instructorData.length === 0 && busnData.length === 0) return;
+
+                // Create scales
+                const xScale = d3.scaleLinear()
+                    .domain([d3.min(sortedYears), d3.max(sortedYears)])
+                    .range([0, width]);
+
+                // Normalize to overall min/max
+                const allValues = [...instructorData.map(d => d.value), ...busnData.map(d => d.value)];
+                const minValue = d3.min(allValues);
+                const maxValue = d3.max(allValues);
+                const yScale = d3.scaleLinear()
+                    .domain([minValue, maxValue])
+                    .range([height, 0]);
+
+                // Create line generator
+                const line = d3.line()
+                    .x(d => xScale(d.year))
+                    .y(d => yScale(d.value));
+
+                // Create tooltip div
+                const tooltip = d3.select('body').selectAll('.sparkline-tooltip').data([0]).join('div')
+                    .attr('class', 'sparkline-tooltip')
+                    .style('position', 'absolute')
+                    .style('background', 'rgba(0, 0, 0, 0.8)')
+                    .style('color', 'white')
+                    .style('padding', '5px 10px')
+                    .style('border-radius', '4px')
+                    .style('font-size', '12px')
+                    .style('pointer-events', 'none')
+                    .style('opacity', 0)
+                    .style('z-index', 1000);
+
+                // Draw BUSN line (always show in both views)
+                if (busnData.length > 0) {
+                    g.append('path')
+                        .datum(busnData)
+                        .attr('class', 'sparkline-line sparkline-busn')
+                        .attr('d', line);
+
+                    // Add dots
+                    g.selectAll('.dot-busn')
+                        .data(busnData)
+                        .enter()
+                        .append('circle')
+                        .attr('class', 'sparkline-dot')
+                        .attr('cx', d => xScale(d.year))
+                        .attr('cy', d => yScale(d.value))
+                        .attr('r', 1.5)
+                        .attr('stroke', '#dc2626');
+                }
+
+                // Draw instructor line (foreground, solid)
+                if (instructorData.length > 0) {
+                    g.append('path')
+                        .datum(instructorData)
+                        .attr('class', 'sparkline-line sparkline-instructor')
+                        .attr('d', line);
+
+                    // Add dots
+                    g.selectAll('.dot-instructor')
+                        .data(instructorData)
+                        .enter()
+                        .append('circle')
+                        .attr('class', 'sparkline-dot')
+                        .attr('cx', d => xScale(d.year))
+                        .attr('cy', d => yScale(d.value))
+                        .attr('r', 1.5)
+                        .attr('stroke', '#2563eb');
+                }
+
+                // Create vertical line for hover (initially hidden)
+                const hoverLine = g.append('line')
+                    .attr('class', 'hover-line')
+                    .attr('y1', 0)
+                    .attr('y2', height)
+                    .attr('stroke', 'black')
+                    .attr('stroke-width', 1)
+                    .style('opacity', 0);
+
+                // Create invisible overlay for hover detection
+                const allYears = [...new Set([...instructorData.map(d => d.year), ...busnData.map(d => d.year)])].sort((a, b) => a - b);
+
+                g.append('rect')
+                    .attr('width', width)
+                    .attr('height', height)
+                    .attr('fill', 'transparent')
+                    .style('cursor', 'pointer')
+                    .on('mousemove', function(event) {
+                        const [mouseX] = d3.pointer(event);
+                        const year = Math.round(xScale.invert(mouseX));
+
+                        // Find closest year in data
+                        const closestYear = allYears.reduce((prev, curr) =>
+                            Math.abs(curr - year) < Math.abs(prev - year) ? curr : prev
+                        );
+
+                        const x = xScale(closestYear);
+
+                        // Show hover line
+                        hoverLine
+                            .attr('x1', x)
+                            .attr('x2', x)
+                            .style('opacity', 1);
+
+                        // Get values for this year
+                        const instructorPoint = instructorData.find(d => d.year === closestYear);
+                        const busnPoint = busnData.find(d => d.year === closestYear);
+
+                        // Extract instructor last name (split on comma, take first part)
+                        const instructorLastName = instructor.split(',')[0];
+
+                        let tooltipHtml = `<strong>Year: ${closestYear}</strong><br/>`;
+                        if (instructorPoint) {
+                            tooltipHtml += `${instructorLastName}: ${instructorPoint.value.toFixed(2)}<br/>`;
+                        }
+                        if (busnPoint) {
+                            tooltipHtml += `All BUSN: ${busnPoint.value.toFixed(2)}`;
+                        }
+
+                        tooltip.transition().duration(100).style('opacity', 1);
+                        tooltip.html(tooltipHtml)
+                            .style('left', (event.pageX + 10) + 'px')
+                            .style('top', (event.pageY - 28) + 'px');
+                    })
+                    .on('mouseout', function() {
+                        hoverLine.style('opacity', 0);
+                        tooltip.transition().duration(200).style('opacity', 0);
+                    });
+            });
+
+            // Add legend at the bottom
+            const legendDiv = container.append('div')
+                .attr('class', 'sparkline-legend')
+                .style('margin-top', '10px')
+                .style('padding', '10px')
+                .style('text-align', 'left');
+
+            // Extract instructor last name (split on comma, take first part)
+            const instructorLastName = instructor.split(',')[0];
+
+            // Always show both legends
+            legendDiv.append('span')
+                .attr('class', 'sparkline-legend-item')
+                .html(`<span class="sparkline-legend-line" style="background-color: #2563eb;"></span>${instructorLastName}`);
+
+            legendDiv.append('span')
+                .attr('class', 'sparkline-legend-item')
+                .html('<span class="sparkline-legend-line" style="background-image: linear-gradient(to right, #dc2626 50%, transparent 50%); background-size: 8px 2px; background-repeat: repeat-x;"></span>All BUSN');
+        }
+
         function displayLongitudinalData(data, instructor) {
             console.log('Displaying longitudinal data:', data);
 
@@ -866,60 +1148,44 @@
                 }
             });
 
-            const sortedYears = Array.from(years).sort();
+            const sortedYears = Array.from(years).sort((a, b) => a - b);
+            console.log('Years found:', sortedYears);
             const metrics = Object.keys(metricGroups).sort();
 
-            // Build HTML for longitudinal display
-            let html = '<div class="row">';
-
-            // Left side: Instructor data
-            html += '<div class="col-md-6">';
-            html += `<h6 class="mb-3">Instructor: ${instructor}</h6>`;
-            html += '<div class="table-responsive">';
-            html += '<table class="table table-sm table-hover">';
-            html += '<thead><tr><th>Metric</th>';
-            sortedYears.forEach(year => {
-                html += `<th class="text-center">${year}</th>`;
-            });
-            html += '</tr></thead><tbody>';
-
-            metrics.forEach(metric => {
-                html += `<tr><td><strong>${metric}</strong></td>`;
-                sortedYears.forEach(year => {
-                    const record = metricGroups[metric].instructor.find(r => r.Year === year);
-                    const score = record ? record.Score.toFixed(2) : '-';
-                    html += `<td class="text-center">${score}</td>`;
-                });
-                html += '</tr>';
-            });
-
-            html += '</tbody></table></div></div>';
-
-            // Right side: ALL_BUSN data
-            html += '<div class="col-md-6">';
-            html += '<h6 class="mb-3">All BUSN Instructors</h6>';
-            html += '<div class="table-responsive">';
-            html += '<table class="table table-sm table-hover">';
-            html += '<thead><tr><th>Metric</th>';
-            sortedYears.forEach(year => {
-                html += `<th class="text-center">${year}</th>`;
-            });
-            html += '</tr></thead><tbody>';
-
-            metrics.forEach(metric => {
-                html += `<tr><td><strong>${metric}</strong></td>`;
-                sortedYears.forEach(year => {
-                    const record = metricGroups[metric].allBusn.find(r => r.Year === year);
-                    const score = record ? record.Score.toFixed(2) : '-';
-                    html += `<td class="text-center">${score}</td>`;
-                });
-                html += '</tr>';
-            });
-
-            html += '</tbody></table></div></div>';
-            html += '</div>'; // close row
+            // Build HTML for longitudinal display with tabs
+            let html = '<div class="mb-4">';
+            html += '<div class="sparkline-tabs">';
+            html += '<button class="sparkline-tab-button active" data-tab="instructor">This Instructor</button>';
+            html += '<button class="sparkline-tab-button" data-tab="course">This Course</button>';
+            html += '</div>';
+            html += '<div class="sparkline-tab-content active" id="instructorTab"></div>';
+            html += '<div class="sparkline-tab-content" id="courseTab"></div>';
+            html += '</div>';
 
             document.getElementById('longitudinalContent').innerHTML = html;
+
+            // Create the sparkline charts after the HTML is inserted
+            createSparklineChart('instructorTab', metricGroups, sortedYears, instructor, 'instructor');
+            createSparklineChart('courseTab', metricGroups, sortedYears, instructor, 'course');
+
+            // Add event listeners for tab switching
+            document.querySelectorAll('.sparkline-tab-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const tabName = this.getAttribute('data-tab');
+
+                    // Update button states
+                    document.querySelectorAll('.sparkline-tab-button').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    this.classList.add('active');
+
+                    // Update tab content visibility
+                    document.querySelectorAll('.sparkline-tab-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    document.getElementById(tabName + 'Tab').classList.add('active');
+                });
+            });
         }
 
         document.getElementById('filterForm').addEventListener('submit', async (e) => {
@@ -1280,10 +1546,6 @@
             
             let html = `
                 <div class="card mb-3" id="longitudinal">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">Longitudinal Data for ${document.getElementById('instructor').value.trim() || 'instructor'}</h5>
-                        <small>Scores across all years</small>
-                    </div>
                     <div class="card-body">
                         <div id="longitudinalContent">
                             <div class="text-center">
