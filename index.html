@@ -35,8 +35,8 @@
             padding: 30px 20px 20px;
         }
         .btn-primary {
-            background-color: #000000;
-            border-color: #000000;
+            background-color: #4b5563;
+            border-color: #4b5563;
             border-radius: 6px;
             padding: 12px;
             font-weight: 500;
@@ -48,7 +48,12 @@
         .btn-primary:focus {
             background-color: #374151;
             border-color: #374151;
-            box-shadow: 0 0 0 0.2rem rgba(0,0,0,0.25);
+            box-shadow: 0 0 0 0.2rem rgba(75,85,99,0.25);
+        }
+        .btn-primary:disabled {
+            background-color: #4b5563;
+            border-color: #4b5563;
+            opacity: 0.8;
         }
         .form-control, .form-select {
             border-color: #d1d5db;
@@ -83,6 +88,10 @@
         .bg-success { background-color: #000000 !important; }
         .bg-danger { background-color: #6b7280 !important; }
         .bg-secondary { background-color: #d1d5db !important; color: #000000 !important; }
+        .spinner-border {
+            border-color: currentColor;
+            border-right-color: transparent;
+        }
         .spinner-border-sm {
             width: 1rem;
             height: 1rem;
@@ -167,11 +176,10 @@
             stroke-width: 1.5;
         }
         .sparkline-instructor {
-            stroke: #2563eb;
+            stroke: #052c65;
         }
         .sparkline-busn {
-            stroke: #dc2626;
-            stroke-dasharray: 3,3;
+            stroke: #9ca3af;
         }
         .sparkline-dot {
             fill: white;
@@ -312,7 +320,7 @@
             <div class="col-lg-8 col-xl-7">
                 <div class="card">
                     <div class="card-header">
-                        <h1 class="mb-0">PUEC Party 🥳🕺🎉</h1>
+                        <h1 class="mb-0">PUEC Party 🥳</h1>
                         <p class="mb-0 mt-2">Process Faculty Course Questionnaires</p>
                     </div>
                     <div class="card-body p-4">
@@ -947,7 +955,7 @@
 
                 facetDiv.append('div')
                     .attr('class', 'sparkline-title')
-                    .text(metric);
+                    .html(wrapMetricWithTooltip(metric));
 
                 const svg = facetDiv.append('svg')
                     .attr('class', 'sparkline-svg')
@@ -1022,7 +1030,7 @@
                         .attr('cx', d => xScale(d.year))
                         .attr('cy', d => yScale(d.value))
                         .attr('r', 1.5)
-                        .attr('stroke', '#dc2626');
+                        .attr('stroke', '#9ca3af');
                 }
 
                 // Draw instructor line (foreground, solid)
@@ -1041,7 +1049,7 @@
                         .attr('cx', d => xScale(d.year))
                         .attr('cy', d => yScale(d.value))
                         .attr('r', 1.5)
-                        .attr('stroke', '#2563eb');
+                        .attr('stroke', '#052c65');
                 }
 
                 // Create vertical line for hover (initially hidden)
@@ -1117,11 +1125,11 @@
             // Always show both legends
             legendDiv.append('span')
                 .attr('class', 'sparkline-legend-item')
-                .html(`<span class="sparkline-legend-line" style="background-color: #2563eb;"></span>${instructorLastName}`);
+                .html(`<span class="sparkline-legend-line" style="background-color: #052c65;"></span>${instructorLastName}`);
 
             legendDiv.append('span')
                 .attr('class', 'sparkline-legend-item')
-                .html('<span class="sparkline-legend-line" style="background-image: linear-gradient(to right, #dc2626 50%, transparent 50%); background-size: 8px 2px; background-repeat: repeat-x;"></span>All BUSN');
+                .html('<span class="sparkline-legend-line" style="background-color: #9ca3af;"></span>All BUSN');
         }
 
         function displayLongitudinalData(data, instructor) {
