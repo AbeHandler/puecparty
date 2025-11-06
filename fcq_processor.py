@@ -164,9 +164,18 @@ if __name__ == "__main__":
         terms = generate_terms(args.academic_year[0], args.academic_year[1], "academic", args.include_summer)
     
     print(f"Using terms: {terms}")
-    
+
+    # Load the dataframe
+    print(f"Loading data from {args.file}...")
+    df = pd.read_csv(args.file)
+
+    # Filter to BUSN only
+    df = df[df["College"] == "BUSN"].copy()
+    print(f"Loaded {len(df)} BUSN records")
+
     # Call the refactored filter_data function
     result = filter_data(
+        df=df,
         instructor=args.instructor,
         course_title=args.course,
         terms=terms,

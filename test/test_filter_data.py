@@ -291,3 +291,81 @@ class TestFilterData:
                             parts = value.split('.')
                             if len(parts) == 2:
                                 assert len(parts[1]) == 2
+
+    def test_rounding_before_na_substitution(self, sample_df):
+        """
+        Test that rounding happens before NA substitution to avoid dtype errors.
+
+        This is a regression test for the bug where fillna("NA") was called before
+        rounding, causing "Expected numeric dtype, got object instead" errors in
+        older pandas versions.
+        """
+        result = filter_data(
+            df=sample_df,
+            instructor="Papuzza, Antonio",
+            terms=["Spring 2024", "Fall 2024"]
+        )
+
+        # Should complete without raising dtype error
+        assert len(result) > 0
+
+        # Check that metrics are properly formatted
+        metrics = [
+            "Interact", "Reflect", "Connect", "Collab", "Contrib", "Eval",
+            "Synth", "Diverse", "Respect", "Challenge", "Creative", "Discuss",
+            "Feedback", "Grading", "Questions", "Tech"
+        ]
+
+        for metric in metrics:
+            if metric in result.columns:
+                for value in result[metric]:
+                    if value == "NA":
+                        # NA values should be string "NA"
+                        assert isinstance(value, str)
+                        assert value == "NA"
+                    else:
+                        # Numeric values should be formatted strings with 2 decimals
+                        assert isinstance(value, str)
+                        # Should be convertible to float
+                        float_val = float(value)
+                        assert float_val >= 0.0 and float_val <= 5.0  # FCQ scale is 1-5
+                        # Should have 2 decimal places (e.g., "4.70", "3.85")
+                        parts = value.split('.')
+                        assert len(parts) == 2, f"Value '{value}' should have decimal point"
+                        assert len(parts[1]) == 2, f"Value '{value}' should have exactly 2 decimal places"
+
+    def test_mixed_na_and_numeric_values(self, sample_df):
+        """
+        Test that a result with both NA and numeric values is handled correctly.
+
+        This ensures that courses with low enrollment (which get NA) and courses
+        with valid metrics can coexist in the same result set.
+        """
+        # Get results that might have mixed NA and numeric values
+        result = filter_data(
+            df=sample_df,
+            instructor="Papuzza, Antonio",
+            terms=["Spring 2024", "Fall 2024"]
+        )
+
+        if len(result) > 1:
+            # Check if we have at least one NA and one numeric value
+            metrics = ["Interact", "Reflect", "Connect"]
+            for metric in metrics:
+                if metric in result.columns:
+                    values = result[metric].tolist()
+                    has_na = any(v == "NA" for v in values)
+                    has_numeric = any(v != "NA" for v in values)
+
+                    if has_na and has_numeric:
+                        # Good - we have mixed values, verify both are correctly formatted
+                        for value in values:
+                            if value == "NA":
+                                assert isinstance(value, str)
+                            else:
+                                assert isinstance(value, str)
+                                # Should be numeric with 2 decimals
+                                float(value)  # Should not raise
+                                parts = value.split('.')
+                                assert len(parts) == 2
+                                assert len(parts[1]) == 2

@@ -300,12 +300,13 @@ def filter_data(
 
     grouped_df = grouped_df.merge(metrics_df, on=["Sbjct", "Crse", "Crse Title"], how="left")
 
+    # Round numeric columns first (before converting to strings)
+    grouped_df = round_cols(grouped_df, round_these_cols=metrics)
+
     # if enroll are less than 10 you will get NAs
     for metric in metrics:
         if metric in grouped_df.columns:
             grouped_df[metric] = grouped_df[metric].fillna("NA")
-
-    grouped_df = round_cols(grouped_df, round_these_cols=metrics)
     
     return grouped_df
 
