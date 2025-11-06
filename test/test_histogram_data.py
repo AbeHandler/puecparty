@@ -3,6 +3,8 @@ Test for histogram data extraction
 """
 import sys
 import os
+import math
+import pandas as pd
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from awslambda import get_section_scores_for_histogram, load_df
@@ -56,5 +58,59 @@ def test_get_section_scores_for_histogram():
     print("\n✓ Test passed!")
     return True
 
+
+def test_get_section_scores_for_histogram_2():
+
+    '''
+    See test/fixtures/test_heather_2020_2021.xlsx
+    '''
+
+    # Load the main dataframe
+    df = pd.read_csv("test/fixtures/fcq.csv")
+    df = df[df["College"] == "BUSN"].copy()
+
+    # Test with a known instructor - Adams, Heather L
+    instructor = "Adams, Heather L"
+    terms = ["Fall 2020", "Spring 2021", "Summer 2021", "Fall 2021"]
+
+    result = get_section_scores_for_histogram(df, instructor, terms)
+    df = pd.DataFrame(result)
+    df = df[df["Metric"] == "Reflect"].copy()
+
+    # this rounding is to mimic what excel does, where 4.5 is rounded up to 5
+    df["Score"] = df["Score"].apply(lambda x: math.floor(x + 0.5))
+
+    # See test/fixtures/test_heather_2020_2021.xlsx
+    assert int(df["Score"].value_counts()[5]) == 3
+    assert int(df["Score"].value_counts()[4]) == 8
+    return True
+
+def test_get_section_scores_for_histogram_3():
+
+    '''
+    See test/fixtures/test_heather_2020_2021.xlsx
+    '''
+
+    # Load the main dataframe
+    df = pd.read_csv("test/fixtures/fcq.csv")
+    df = df[df["College"] == "BUSN"].copy()
+
+    # Test with a known instructor - Adams, Heather L
+    instructor = "Adams, Heather L"
+    terms = ["Spring 2024", "Fall 2024"]
+
+    result = get_section_scores_for_histogram(df, instructor, terms)
+    df = pd.DataFrame(result)
+    df = df[df["Metric"] == "Reflect"].copy()
+
+    # this rounding is to mimic what excel does, where 4.5 is rounded up to 5
+    df["Score"] = df["Score"].apply(lambda x: math.floor(x + 0.5))
+
+    # See test/fixtures/test_heather_2020_2021.xlsx
+    assert int(df["Score"].value_counts()[5]) == 3
+    assert int(df["Score"].value_counts()[4]) == 8
+    return True
+
+
 if __name__ == "__main__":
-    test_get_section_scores_for_histogram()
+    test_get_section_scores_for_histogram_2()
