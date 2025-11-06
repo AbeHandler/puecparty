@@ -329,6 +329,74 @@ def format_data(df):
     formatted_result = format_result_table_long(df)
     return prioritize_metrics_sort_corrected(formatted_result)
 
+def get_section_scores_for_histogram(df, instructor, terms):
+    """
+    Get raw section-level scores for histogram visualization.
+    Returns individual section scores (not aggregated) for each metric.
+
+    Args:
+        df: The main FCQ dataframe
+        instructor: Instructor name to filter by
+        terms: List of terms like ["Spring 2024", "Fall 2024"]
+
+    Returns:
+        List of dicts with section-level scores for histogram binning
+    """
+    # Validate inputs
+    validate_terms(terms)
+
+    df["Year"] = df["Year"].astype(int)
+    df["Term_Year"] = df["Term"] + " " + df["Year"].astype(str)
+
+    # Filter by instructor
+    filtered_df = df[df["Instructor Name"] == instructor].copy()
+
+    # Filter by terms
+    filtered_df = filtered_df[filtered_df["Term_Year"].isin(terms)].copy()
+
+    if len(filtered_df) == 0:
+        return []
+
+    # Metrics we want for histograms
+    metrics = [
+        "Interact", "Reflect", "Connect", "Collab", "Contrib", "Eval",
+        "Synth", "Diverse", "Respect", "Challenge", "Creative", "Discuss",
+        "Feedback", "Grading", "Questions", "Tech",
+    ]
+
+    # Get course-level grouping for metadata
+    filtered_df["Crse"] = filtered_df["Crse"].astype(int)
+    first_digit = filtered_df["Crse"].astype(str).str[0].astype(int)
+    filtered_df["ValidForStats"] = ((filtered_df["Enroll"] >= 10) & (first_digit <= 4)) | (first_digit > 4)
+
+    # Only include sections valid for stats
+    valid_sections = filtered_df[filtered_df["ValidForStats"]].copy()
+
+    if len(valid_sections) == 0:
+        return []
+
+    # Build result: one record per section per metric
+    results = []
+
+    for _, row in valid_sections.iterrows():
+        course_key = f"{row['Sbjct']} {row['Crse']}"
+        course_title = row['Crse Title']
+        term_year = row['Term_Year']
+        section = row['Sect']
+
+        for metric in metrics:
+            if pd.notnull(row[metric]):
+                results.append({
+                    "Course": course_key,
+                    "Course_Title": course_title,
+                    "Term": term_year,
+                    "Section": section,
+                    "Metric": metric,
+                    "Score": float(row[metric])
+                })
+
+    return results
+
 def handle_longitudinal_scores_event(event):
     """Handle request for instructor + BUSN-wide evaluation scores"""
     path = event.get("path", "/tmp/scoreby_year_2020_present.csv")
@@ -351,6 +419,31 @@ def handle_longitudinal_scores_event(event):
         })
     }
 
+def handle_histogram_data_event(event, df):
+    """Handle request for raw section-level scores for histogram visualization"""
+    instructor = event.get("instructor")
+    terms = event.get("terms")
+
+    if not instructor:
+        raise ValueError("Missing required field: 'instructor'")
+    if not terms:
+        raise ValueError("Missing required field: 'terms'")
+
+    data = get_section_scores_for_histogram(df, instructor, terms)
+
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+        },
+        "body": json.dumps({
+            "success": True,
+            "data": data,
+            "count": len(data)
+        })
+    }
+
 def lambda_handler(event, context):
     """
     AWS Lambda handler function
@@ -358,20 +451,23 @@ def lambda_handler(event, context):
     try:
         print(f"Received event: {json.dumps(event)}")
         action = event.get("action")
+
+        # Handle action-based requests
         if action is not None and action == "get_longitudinal_scores":
             return handle_longitudinal_scores_event(event)
-        else:
-            pass
+        elif action is not None and action == "get_histogram_data":
+            df = load_df()
+            return handle_histogram_data_event(event, df)
 
-        # Extract parameters from event
+        # Extract parameters for standard filter request
         instructor = event.get('instructor')
         course_title = event.get('course_title')
         terms = event.get('terms')
         exclude_instructor = event.get('exclude_instructor')
 
-        
+
         print(f"Parameters: instructor={instructor}, course_title={course_title}, terms={terms}")
-        
+
         df = load_df()
 
         # Call your filter function

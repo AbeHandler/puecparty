@@ -230,6 +230,77 @@
         .sparkline-tab-content.active {
             display: block;
         }
+        /* Histogram styles */
+        .histogram-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .histogram-facet {
+            display: flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            background-color: #fafafa;
+        }
+        .histogram-title {
+            font-size: 0.85em;
+            font-weight: 600;
+            width: 100px;
+            flex-shrink: 0;
+            color: #333;
+        }
+        .histogram-svg {
+            flex-grow: 1;
+            height: 60px;
+            margin-left: 10px;
+        }
+        .histogram-bar {
+            fill: #052c65;
+            transition: fill 0.2s;
+        }
+        .histogram-bar:hover {
+            fill: #083d8a;
+        }
+        .histogram-axis text {
+            font-size: 10px;
+            fill: #666;
+        }
+        .histogram-axis line,
+        .histogram-axis path {
+            stroke: #ccc;
+        }
+        .histogram-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .histogram-tab-button {
+            padding: 8px 16px;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            font-weight: 500;
+            color: #6b7280;
+            transition: all 0.2s;
+            margin-bottom: -2px;
+        }
+        .histogram-tab-button:hover {
+            color: #000000;
+        }
+        .histogram-tab-button.active {
+            color: #000000;
+            border-bottom-color: #000000;
+        }
+        .histogram-tab-content {
+            display: none;
+        }
+        .histogram-tab-content.active {
+            display: block;
+        }
     </style>
 
     <script>
@@ -1132,6 +1203,180 @@
                 .html('<span class="sparkline-legend-line" style="background-color: #9ca3af;"></span>All BUSN');
         }
 
+        function calculateScoreDistributions(courseGroups) {
+            console.log('Calculating score distributions from courseGroups:', courseGroups);
+
+            // Define metrics to analyze (exclude meta metrics)
+            const courseMetrics = ['Interact', 'Reflect', 'Connect', 'Collab', 'Eval', 'Synth', 'Diverse'];
+            const instructorMetrics = ['Respect', 'Challenge', 'Creative', 'Discuss', 'Feedback', 'Grading', 'Questions', 'Tech'];
+            const allMetrics = [...courseMetrics, ...instructorMetrics];
+
+            // Initialize distribution object
+            const distributions = {};
+            allMetrics.forEach(metric => {
+                distributions[metric] = {
+                    1: 0,
+                    2: 0,
+                    3: 0,
+                    4: 0,
+                    5: 0
+                };
+            });
+
+            // Iterate through all courses and collect scores
+            Object.values(courseGroups).forEach(courseData => {
+                courseData.forEach(row => {
+                    if (allMetrics.includes(row.Metric) && typeof row.Value === 'number') {
+                        // Round to nearest integer (1-5)
+                        const roundedScore = Math.max(1, Math.min(5, Math.round(row.Value)));
+                        distributions[row.Metric][roundedScore]++;
+                    }
+                });
+            });
+
+            console.log('Calculated distributions:', distributions);
+            return distributions;
+        }
+
+        function createHistogramChart(containerId, distributions, courseGroups, viewType = 'course') {
+            console.log('Creating histogram chart for:', containerId, viewType);
+
+            const container = d3.select(`#${containerId}`);
+            container.selectAll('*').remove();
+
+            // Define metrics by category
+            const courseMetrics = ['Interact', 'Reflect', 'Connect', 'Collab', 'Eval', 'Synth', 'Diverse'];
+            const instructorMetrics = ['Respect', 'Challenge', 'Creative', 'Discuss', 'Feedback', 'Grading', 'Questions', 'Tech'];
+
+            // Filter distributions based on view type
+            let metricsToDisplay;
+            if (viewType === 'course') {
+                metricsToDisplay = courseMetrics;
+            } else {
+                metricsToDisplay = instructorMetrics;
+            }
+
+            // Create histogram container
+            const histogramContainer = container.append('div')
+                .attr('class', 'histogram-container');
+
+            metricsToDisplay.forEach(metric => {
+                if (!distributions[metric]) return;
+
+                const facet = histogramContainer.append('div')
+                    .attr('class', 'histogram-facet');
+
+                facet.append('div')
+                    .attr('class', 'histogram-title')
+                    .html(wrapMetricWithTooltip(metric));
+
+                const svg = facet.append('svg')
+                    .attr('class', 'histogram-svg')
+                    .attr('width', 300)
+                    .attr('height', 60);
+
+                const margin = { top: 5, right: 10, bottom: 20, left: 25 };
+                const width = 300 - margin.left - margin.right;
+                const height = 60 - margin.top - margin.bottom;
+
+                const g = svg.append('g')
+                    .attr('transform', `translate(${margin.left},${margin.top})`);
+
+                // Prepare data for histogram
+                const data = [1, 2, 3, 4, 5].map(score => ({
+                    score: score,
+                    count: distributions[metric][score] || 0
+                }));
+
+                // Scales
+                const x = d3.scaleBand()
+                    .domain([1, 2, 3, 4, 5])
+                    .range([0, width])
+                    .padding(0.2);
+
+                const maxCount = d3.max(data, d => d.count) || 1;
+                const y = d3.scaleLinear()
+                    .domain([0, maxCount])
+                    .range([height, 0]);
+
+                // Add bars
+                g.selectAll('.histogram-bar')
+                    .data(data)
+                    .enter()
+                    .append('rect')
+                    .attr('class', 'histogram-bar')
+                    .attr('x', d => x(d.score))
+                    .attr('y', d => y(d.count))
+                    .attr('width', x.bandwidth())
+                    .attr('height', d => height - y(d.count))
+                    .append('title')
+                    .text(d => `Score ${d.score}: ${d.count} course${d.count !== 1 ? 's' : ''}`);
+
+                // Add x-axis
+                g.append('g')
+                    .attr('class', 'histogram-axis')
+                    .attr('transform', `translate(0,${height})`)
+                    .call(d3.axisBottom(x).tickSize(3));
+
+                // Add y-axis
+                g.append('g')
+                    .attr('class', 'histogram-axis')
+                    .call(d3.axisLeft(y).ticks(3).tickSize(3));
+
+                // Add y-axis label
+                g.append('text')
+                    .attr('transform', 'rotate(-90)')
+                    .attr('y', -margin.left + 10)
+                    .attr('x', -height / 2)
+                    .attr('text-anchor', 'middle')
+                    .style('font-size', '9px')
+                    .style('fill', '#666')
+                    .text('Count');
+            });
+        }
+
+        function displayScoreDistributions(courseGroups) {
+            console.log('Displaying score distributions');
+
+            // Calculate distributions
+            const distributions = calculateScoreDistributions(courseGroups);
+
+            // Build HTML with tabs
+            let html = '<div class="mb-4">';
+            html += '<div class="histogram-tabs">';
+            html += '<button class="histogram-tab-button active" data-tab="course">This Course</button>';
+            html += '<button class="histogram-tab-button" data-tab="instructor">This Instructor</button>';
+            html += '</div>';
+            html += '<div class="histogram-tab-content active" id="courseHistogramTab"></div>';
+            html += '<div class="histogram-tab-content" id="instructorHistogramTab"></div>';
+            html += '</div>';
+
+            document.getElementById('scoreDistributionsContent').innerHTML = html;
+
+            // Create the histogram charts after the HTML is inserted
+            createHistogramChart('courseHistogramTab', distributions, courseGroups, 'course');
+            createHistogramChart('instructorHistogramTab', distributions, courseGroups, 'instructor');
+
+            // Add event listeners for tab switching
+            document.querySelectorAll('.histogram-tab-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const tabName = this.getAttribute('data-tab');
+
+                    // Update button states
+                    document.querySelectorAll('.histogram-tab-button').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    this.classList.add('active');
+
+                    // Update content visibility
+                    document.querySelectorAll('.histogram-tab-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    document.getElementById(`${tabName}HistogramTab`).classList.add('active');
+                });
+            });
+        }
+
         function displayLongitudinalData(data, instructor) {
             console.log('Displaying longitudinal data:', data);
 
@@ -1554,6 +1799,9 @@
             
             let html = `
                 <div class="card mb-3" id="longitudinal">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">Trends for ${document.getElementById('instructor').value.trim() || 'instructor'}</h5>
+                    </div>
                     <div class="card-body">
                         <div id="longitudinalContent">
                             <div class="text-center">
@@ -1565,10 +1813,18 @@
                         </div>
                     </div>
                 </div>
+                <div class="card mb-3" id="scoreDistributions">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">Score Distributions for ${document.getElementById('instructor').value.trim() || 'instructor'}</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="scoreDistributionsContent"></div>
+                    </div>
+                </div>
                 <div class="card">
                     <div class="card-header bg-success text-white">
                         <div>
-                            <h5 class="mb-0">Found ${Object.keys(courseGroups).length} courses for ${document.getElementById('instructor').value.trim() || 'instructor'}</h5>
+                            <h5 class="mb-0">By-course analysis for ${document.getElementById('instructor').value.trim() || 'instructor'}</h5>
                             <small class="text-muted" style="font-size: 0.8em;">Searched from ${startYear ? 'Fall ' + startYear : 'earliest'} to ${endYear ? 'Spring ' + endYear : 'latest'}</small>
                         </div>
                         <button class="btn btn-outline-dark btn-sm" onclick="downloadData()">
@@ -1585,7 +1841,10 @@
             
             // Set initial HTML structure
             resultsDiv.innerHTML = html;
-            
+
+            // Display score distributions
+            displayScoreDistributions(courseGroups);
+
             // Process each course and fetch additional data asynchronously
             const courseEntries = Object.entries(courseGroups);
             
