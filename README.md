@@ -5,5 +5,6 @@ The lambda reads data from a s3 bucket. Set it up like this.
 
 
 # Versions
+- 1.3.0 Added score distribution for an individual instructor
 - 1.2.0 Added trend analysis by time going back to 2020
 - 1.1.0 Added testing for back end, shared on GitHub
