@@ -197,6 +197,42 @@ def load_df():
         print(traceback.format_exc())
         raise Exception(f"Failed to load CSV data: {str(e)}")
 
+def apply_valid_for_stats_filter(df):
+    """
+    Apply ValidForStats logic to a dataframe.
+
+    This determines which sections should be included in statistical calculations
+    based on enrollment and course level:
+    - Lower-level courses (1000-4999): enrollment >= 10
+    - Graduate courses (5000+): all sections included
+
+    Args:
+        df: DataFrame with columns 'Crse' and 'Enroll'
+
+    Returns:
+        DataFrame with 'ValidForStats' column added
+    """
+    # Make a copy to avoid modifying the original
+    df = df.copy()
+
+    # Assert Crse is numeric
+    assert pd.api.types.is_integer_dtype(df["Crse"]) or df["Crse"].astype(str).str.isnumeric().all(), \
+        "Crse column must be all integers"
+
+    # Convert to int
+    df["Crse"] = df["Crse"].astype(int)
+
+    # Get first digit. This should be {1 ... 7}
+    first_digit = df["Crse"].astype(str).str[0].astype(int)
+    assert ((first_digit >= 1) & (first_digit <= 7)).all(), "Found Crse values outside 1–7 range"
+
+    # Define ValidForStats:
+    # - For undergrad courses (1000-4999): require enrollment >= 10
+    # - For graduate courses (5000+): include all sections
+    df["ValidForStats"] = ((df["Enroll"] >= 10) & (first_digit <= 4)) | (first_digit > 4)
+
+    return df
+
 def filter_data(
     df,
     instructor=None,
@@ -264,31 +300,32 @@ def filter_data(
     # Create a section identifier to count unique sections per term
     filtered_df["Section_ID"] = filtered_df["Term_Year"] + "_" + filtered_df["Sect"].astype(str)
 
-    # assert Crse is numeric
-    assert pd.api.types.is_integer_dtype(filtered_df["Crse"]) or filtered_df["Crse"].astype(str).str.isnumeric().all(), \
-        "Crse column must be all integers"
+    # Apply ValidForStats filtering logic (shared method)
+    filtered_df = apply_valid_for_stats_filter(filtered_df)
 
-    # convert to int
-    filtered_df["Crse"] = filtered_df["Crse"].astype(int)
-
-    # get first digit. This will always been {1 ... 7}
-    first_digit = filtered_df["Crse"].astype(str).str[0].astype(int)
-    assert ((first_digit >= 1) & (first_digit <= 7)).all(), "Found Crse values outside 1–7 range"
-
-    # define ValidForStats
-    filtered_df["ValidForStats"] = ((filtered_df["Enroll"] >= 10) & (first_digit <= 4)) | (first_digit > 4)
-
-    # things like terms taught, response rate etc we always want but sometimes we will exclude w/ < 10 
-    grouped_df = (
+    # Aggregate metadata (count, response rate, terms) across all sections
+    metadata_df = (
         filtered_df.groupby(["Sbjct", "Crse", "Crse Title"])
         .agg(
-            Count=("Crse Title", "size"),  # all rows count
-            Total_Sections=("Section_ID", "nunique"),  # all rows count
-            Response_Rate=("Resp Rate", "mean"),  # always include
-            Terms=("Term_Year", lambda x: list(x.unique())),  # all rows
+            Count=("Crse Title", "size"),  # Total number of rows/sections
+            Response_Rate=("Resp Rate", "mean"),
+            Terms=("Term_Year", lambda x: list(x.unique())),
         )
         .reset_index()
     )
+
+    # Count only valid sections (matching histogram logic)
+    valid_sections_df = (
+        filtered_df[filtered_df["ValidForStats"]]
+        .groupby(["Sbjct", "Crse", "Crse Title"])
+        .agg(
+            Total_Sections=("Section_ID", "nunique")
+        )
+        .reset_index()
+    )
+
+    # Merge metadata and section counts
+    grouped_df = metadata_df.merge(valid_sections_df, on=["Sbjct", "Crse", "Crse Title"], how="left")
 
     # these are only for enrollment >= 10
     metrics_df = (
@@ -365,10 +402,8 @@ def get_section_scores_for_histogram(df, instructor, terms):
         "Feedback", "Grading", "Questions", "Tech",
     ]
 
-    # Get course-level grouping for metadata
-    filtered_df["Crse"] = filtered_df["Crse"].astype(int)
-    first_digit = filtered_df["Crse"].astype(str).str[0].astype(int)
-    filtered_df["ValidForStats"] = ((filtered_df["Enroll"] >= 10) & (first_digit <= 4)) | (first_digit > 4)
+    # Apply ValidForStats filtering logic (shared method)
+    filtered_df = apply_valid_for_stats_filter(filtered_df)
 
     # Only include sections valid for stats
     valid_sections = filtered_df[filtered_df["ValidForStats"]].copy()
