@@ -409,20 +409,25 @@ def filter_data(
     )
 
     # Get details of excluded sections (those not valid for stats)
-    excluded_sections_df = (
-        filtered_df[~filtered_df["ValidForStats"]]
-        .groupby(["Sbjct", "Crse", "Crse Title"])
-        .apply(lambda x: [
-            {
-                "term": row["Term_Year"],
-                "section": row["Sect"],
-                "enrollment": int(row["Enroll"]),
-                "reason": "Undergrad course with enrollment < 10"
-            }
-            for _, row in x.iterrows()
-        ])
-        .reset_index(name="Excluded_Details")
-    )
+    if len(filtered_df[~filtered_df["ValidForStats"]]) > 0:
+        excluded_sections_df = (
+            filtered_df[~filtered_df["ValidForStats"]]
+            .groupby(["Sbjct", "Crse", "Crse Title"])
+            .apply(lambda x: [
+                {
+                    "term": row["Term_Year"],
+                    "section": row["Sect"],
+                    "enrollment": int(row["Enroll"]),
+                    "reason": "Undergrad course with enrollment < 10"
+                }
+                for _, row in x.iterrows()
+            ], include_groups=False)
+            .reset_index()
+            .rename(columns={0: "Excluded_Details"})
+        )[["Sbjct", "Crse", "Crse Title", "Excluded_Details"]]
+    else:
+        # No excluded sections - create empty DataFrame with correct schema
+        excluded_sections_df = pd.DataFrame(columns=["Sbjct", "Crse", "Crse Title", "Excluded_Details"])
 
     # Merge metadata and section counts
     grouped_df = metadata_df.merge(all_sections_df, on=["Sbjct", "Crse", "Crse Title"], how="left")
