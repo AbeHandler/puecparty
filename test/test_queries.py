@@ -74,9 +74,9 @@ class TestQueries:
             terms=terms_2022_plus
         )
 
-        result = result[["Total_Sections", "Crse Title"]]
+        result = result[["All_Sections", "Crse Title"]]
         result = result[result["Crse Title"] == "Intro to Python Programming"].copy()
-        assert result.iloc[0]["Total_Sections"] == 4, "Handler has taught 4 total sections of 3220, 2022-2025"
+        assert result.iloc[0]["All_Sections"] == 4, "Handler has taught 4 total sections of 3220, 2022-2025"
 
 
     def test_exclude_instructor_without_course_raises_error(self, sample_df):

@@ -962,8 +962,6 @@
 
         async function fetchLongitudinalScores(instructor) {
             try {
-                console.log('Fetching longitudinal scores for:', instructor);
-
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
@@ -976,7 +974,6 @@
                 });
 
                 const responseText = await response.text();
-                console.log('Longitudinal scores raw response:', responseText);
 
                 let data;
                 try {
@@ -986,20 +983,16 @@
                     return null;
                 }
 
-                console.log('Longitudinal scores parsed data:', data);
-
                 // Handle the Lambda response format
                 if (data.statusCode && data.body) {
                     const actualData = JSON.parse(data.body);
                     if (data.statusCode === 200 && actualData.success) {
-                        console.log('Longitudinal scores data:', actualData.data);
                         return actualData.data;
                     } else {
                         console.error('Longitudinal scores error:', actualData.error);
                         return null;
                     }
                 } else if (data.success) {
-                    console.log('Longitudinal scores data:', data.data);
                     return data.data;
                 } else {
                     console.error('Longitudinal scores error:', data.error);
@@ -1013,8 +1006,6 @@
 
         async function fetchHistogramData(instructor, terms) {
             try {
-                console.log('Fetching histogram data for:', instructor, terms);
-
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
@@ -1028,7 +1019,6 @@
                 });
 
                 const responseText = await response.text();
-                console.log('Histogram data raw response:', responseText);
 
                 let data;
                 try {
@@ -1038,20 +1028,16 @@
                     return null;
                 }
 
-                console.log('Histogram data parsed data:', data);
-
                 // Handle the Lambda response format
                 if (data.statusCode && data.body) {
                     const actualData = JSON.parse(data.body);
                     if (data.statusCode === 200 && actualData.success) {
-                        console.log('Histogram data:', actualData.data);
                         return actualData.data;
                     } else {
                         console.error('Histogram data error:', actualData.error);
                         return null;
                     }
                 } else if (data.success) {
-                    console.log('Histogram data:', data.data);
                     return data.data;
                 } else {
                     console.error('Histogram data error:', data.error);
@@ -1061,6 +1047,122 @@
                 console.error('Error fetching histogram data:', error);
                 return null;
             }
+        }
+
+        async function fetchOutlierData(instructor, terms, threshold = 3.0) {
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'get_section_z_score_outliers',
+                        instructor: instructor,
+                        terms: terms,
+                        threshold: threshold
+                    })
+                });
+
+                const responseText = await response.text();
+
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.error('Failed to parse outlier data response:', parseError);
+                    return null;
+                }
+
+                // Handle the Lambda response format
+                if (data.statusCode && data.body) {
+                    const actualData = JSON.parse(data.body);
+                    if (data.statusCode === 200 && actualData.success) {
+                        return actualData.data;
+                    } else {
+                        console.error('Outlier data error:', actualData.error);
+                        return null;
+                    }
+                } else if (data.success) {
+                    return data.data;
+                } else {
+                    console.error('Outlier data error:', data.error);
+                    return null;
+                }
+            } catch (error) {
+                console.error('Error fetching outlier data:', error);
+                return null;
+            }
+        }
+
+        function displayOutlierData(outliers) {
+            if (!outliers || outliers.length === 0) {
+                document.getElementById('outlierDetectionContent').innerHTML = `
+                    <div class="alert alert-success">
+                        <h6 class="alert-heading">No Outliers Detected</h6>
+                        <p class="mb-0">All section scores fall within 2 standard deviations of the BUSN mean. This indicates consistent performance across all sections and metrics.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="alert alert-info">
+                    <h6 class="alert-heading">About Outlier Detection</h6>
+                    <p class="mb-0">This section shows individual sections and metrics with z-scores greater than +2 or less than -2 standard deviations from the BUSN-wide mean. These represent unusually high or low scores compared to all BUSN sections during the same time period.</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Course</th>
+                                <th>Term</th>
+                                <th>Section</th>
+                                <th>Metric</th>
+                                <th>Section Score</th>
+                                <th>BUSN Mean</th>
+                                <th>Z-Score</th>
+                                <th>Interpretation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            outliers.forEach(outlier => {
+                const z = outlier.Z_Score;
+                let interpretation = '';
+                let badgeClass = '';
+
+                if (z >= 2.0) {
+                    interpretation = 'Significantly above';
+                    badgeClass = 'bg-success';
+                } else if (z <= -2.0) {
+                    interpretation = 'Significantly below';
+                    badgeClass = 'bg-danger';
+                }
+
+                html += `
+                    <tr>
+                        <td>${outlier.Course}</td>
+                        <td>${outlier.Term}</td>
+                        <td>${outlier.Section}</td>
+                        <td>${outlier.Metric}</td>
+                        <td>${outlier.Section_Score}</td>
+                        <td>${outlier.BUSN_Mean}</td>
+                        <td><strong>${z.toFixed(2)}</strong></td>
+                        <td><span class="badge ${badgeClass}">${interpretation}</span></td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-muted small mt-2 mb-0"><strong>Found ${outliers.length} outlier${outliers.length === 1 ? '' : 's'}</strong> (section-metric combinations more than 2 standard deviations from BUSN mean)</p>
+            `;
+
+            document.getElementById('outlierDetectionContent').innerHTML = html;
         }
 
         function createSparklineChart(containerId, metricGroups, sortedYears, instructor, viewType = 'course') {
@@ -1290,13 +1392,10 @@
                 });
             });
 
-            console.log('Calculated distributions:', distributions);
             return distributions;
         }
 
         function calculateScoreDistributionsFromHistogramData(histogramData) {
-            console.log('Calculating score distributions from histogram data:', histogramData);
-
             // Define metrics to analyze (exclude meta metrics)
             const courseMetrics = ['Interact', 'Reflect', 'Connect', 'Collab', 'Eval', 'Synth', 'Diverse'];
             const instructorMetrics = ['Respect', 'Challenge', 'Creative', 'Discuss', 'Feedback', 'Grading', 'Questions', 'Tech'];
@@ -1323,13 +1422,10 @@
                 }
             });
 
-            console.log('Calculated distributions from histogram data:', distributions);
             return distributions;
         }
 
         function createHistogramChart(containerId, distributions, courseGroups, viewType = 'course') {
-            console.log('Creating histogram chart for:', containerId, viewType);
-
             const container = d3.select(`#${containerId}`);
             container.selectAll('*').remove();
 
@@ -1467,8 +1563,6 @@
         }
 
         function displayScoreDistributionsFromHistogramData(histogramData) {
-            console.log('Displaying score distributions from histogram data');
-
             if (!histogramData || histogramData.length === 0) {
                 document.getElementById('scoreDistributionsContent').innerHTML = `
                     <div class="alert alert-info">
@@ -1542,7 +1636,6 @@
             });
 
             const sortedYears = Array.from(years).sort((a, b) => a - b);
-            console.log('Years found:', sortedYears);
             const metrics = Object.keys(metricGroups).sort();
 
             // Build HTML for longitudinal display with tabs
@@ -1683,11 +1776,10 @@
                 // Set the terms array in the payload
                 payload.terms = terms;
 
-                console.log('Term list before sending to lambda:', terms);
-
-                // Fetch longitudinal scores and histogram data for this instructor
+                // Fetch longitudinal scores, histogram data, and outlier data for this instructor
                 const longitudinalDataPromise = fetchLongitudinalScores(instructor);
                 const histogramDataPromise = fetchHistogramData(instructor, terms);
+                const outlierDataPromise = fetchOutlierData(instructor, terms, 3.0);
 
                 // Make API call
                 const response = await fetch(API_URL, {
@@ -1697,26 +1789,21 @@
                     },
                     body: JSON.stringify(payload)
                 });
-                
+
                 const responseText = await response.text();
-                console.log('Raw response:', responseText);
-                
+
                 let data;
                 try {
                     data = JSON.parse(responseText);
                 } catch (parseError) {
                     throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}`);
                 }
-                
-                console.log('Parsed data:', data);
-                
+
                 // Handle the Lambda response format (with statusCode, headers, body)
                 if (data.statusCode && data.body) {
                     // Lambda is returning the full response object
                     const actualData = JSON.parse(data.body);
-                    console.log('actualData:', actualData);
                     if (data.statusCode === 200 && actualData.success) {
-                        console.log('About to call displayResults with:', actualData.data.length, 'items');
                         displayResults(actualData.data, actualData.count);
                     } else {
                         throw new Error(actualData.error || `Lambda error: ${data.statusCode}`);
@@ -1764,6 +1851,18 @@
                     document.getElementById('scoreDistributionsContent').innerHTML = `
                         <div class="alert alert-warning">
                             <p class="mb-0">Could not load histogram data.</p>
+                        </div>
+                    `;
+                });
+
+                // Process outlier data
+                outlierDataPromise.then(outlierData => {
+                    displayOutlierData(outlierData);
+                }).catch(error => {
+                    console.error('Error processing outlier data:', error);
+                    document.getElementById('outlierDetectionContent').innerHTML = `
+                        <div class="alert alert-warning">
+                            <p class="mb-0">Could not load outlier data.</p>
                         </div>
                     `;
                 });
@@ -1908,7 +2007,6 @@
         }
 
         async function displayResults(data, count) {
-            console.log('displayResults called with data:', data, 'count:', count);
             const resultsDiv = document.getElementById('results');
 
             // Initialize global terms heights tracker
@@ -1951,14 +2049,106 @@
                 }
                 courseGroups[courseKey].push(row);
             });
-            
-            console.log('Building HTML with courseGroups:', Object.keys(courseGroups).length, 'courses');
-            
+
+            // Calculate section statistics
+            let totalAllSections = 0;
+            let totalValidSections = 0;
+            const allUniqueTerms = new Set();
+            const allCourseNames = [];
+            const allExcludedSections = [];
+
+            Object.entries(courseGroups).forEach(([courseKey, courseData], index) => {
+                // Store course name for tooltip
+                allCourseNames.push(courseKey);
+                const allSectionsRow = courseData.find(row => row.Metric === 'All_Sections');
+                const validSectionsRow = courseData.find(row => row.Metric === 'Total_Sections');
+                const termsRow = courseData.find(row => row.Metric === 'Terms');
+                const excludedDetailsRow = courseData.find(row => row.Metric === 'Excluded_Details');
+
+                if (allSectionsRow) {
+                    totalAllSections += (parseInt(allSectionsRow.Value) || 0);
+                }
+                if (validSectionsRow) {
+                    totalValidSections += (parseInt(validSectionsRow.Value) || 0);
+                }
+
+                // Collect all unique terms
+                if (termsRow && Array.isArray(termsRow.Value)) {
+                    termsRow.Value.forEach(term => allUniqueTerms.add(term));
+                }
+
+                // Collect excluded section details
+                if (excludedDetailsRow && Array.isArray(excludedDetailsRow.Value)) {
+                    excludedDetailsRow.Value.forEach(detail => {
+                        allExcludedSections.push({
+                            course: courseKey,
+                            ...detail
+                        });
+                    });
+                }
+            });
+
+            const excludedSections = totalAllSections - totalValidSections;
+            const totalCourses = Object.keys(courseGroups).length;
+
+            // Sort terms chronologically for tooltip
+            const sortedTerms = Array.from(allUniqueTerms).sort((a, b) => {
+                const parseTermAbbrev = (term) => {
+                    const [season, year] = term.split(' ');
+                    const seasonOrder = { 'Spring': 1, 'Summer': 2, 'Fall': 3 };
+                    return parseInt(year) * 10 + seasonOrder[season];
+                };
+                return parseTermAbbrev(a) - parseTermAbbrev(b);
+            });
+            const totalTerms = sortedTerms.length;
+
+            // Create tooltip content
+            const coursesTooltip = allCourseNames.join('<br>');
+            const termsTooltip = sortedTerms.join('<br>');
+            const sectionsFoundTooltip = `${totalValidSections} analyzed, ${excludedSections} excluded`;
+
+            // Build excluded sections tooltip
+            let excludedTooltip = '';
+            if (allExcludedSections.length > 0) {
+                excludedTooltip = allExcludedSections.map(detail => {
+                    return `${detail.course}<br>&nbsp;&nbsp;${detail.term}, Section ${detail.section}: ${detail.enrollment} student${detail.enrollment === 1 ? '' : 's'}`;
+                }).join('<br>');
+            } else {
+                excludedTooltip = 'No sections excluded';
+            }
+
             // Get form values for additional queries
             const startYear = document.getElementById('startYear').value;
             const endYear = document.getElementById('endYear').value;
-            
+
             let html = `
+                <div class="card mb-3">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">Showing results from ${startYear ? 'Fall ' + startYear : 'earliest'} to ${endYear ? 'Spring ' + endYear : 'latest'}</h5>
+                    </div>
+                    <div class="card-body py-2">
+                        <div class="d-flex justify-content-around align-items-center flex-wrap gap-4">
+                            <div class="text-center" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom" title="${coursesTooltip}" style="min-width: 110px;">
+                                <div style="font-size: 1.8em; font-weight: bold; line-height: 1; color: #052c65; cursor: help;">${totalCourses}</div>
+                                <div style="font-size: 0.85em; color: #666; white-space: nowrap;">Course${totalCourses === 1 ? '' : 's'}</div>
+                            </div>
+                            <div class="text-center" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom" title="${termsTooltip}" style="min-width: 110px;">
+                                <div style="font-size: 1.8em; font-weight: bold; line-height: 1; color: #052c65; cursor: help;">${totalTerms}</div>
+                                <div style="font-size: 0.85em; color: #666; white-space: nowrap;">Unique Term${totalTerms === 1 ? '' : 's'}</div>
+                            </div>
+                            <div class="text-center" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom" title="${sectionsFoundTooltip}" style="min-width: 120px;">
+                                <div style="font-size: 1.8em; font-weight: bold; line-height: 1; color: #052c65; cursor: help;">${totalAllSections}</div>
+                                <div style="font-size: 0.85em; color: #666; white-space: nowrap;">Sections Found</div>
+                            </div>
+                            ${excludedSections > 0 ? `
+                            <div class="text-center" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom" title="${excludedTooltip}" style="min-width: 140px;">
+                                <div style="font-size: 1.8em; font-weight: bold; line-height: 1; color: #052c65; cursor: help;">${excludedSections}</div>
+                                <div style="font-size: 0.85em; color: #666; white-space: nowrap;">Excluded Sections</div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
                 <div class="card mb-3" id="longitudinal">
                     <div class="card-header bg-success text-white">
                         <h5 class="mb-0">Trends for ${document.getElementById('instructor').value.trim() || 'instructor'}</h5>
@@ -1976,21 +2166,30 @@
                 </div>
                 <div class="card mb-3" id="scoreDistributions">
                     <div class="card-header bg-success text-white">
-                        <div>
-                            <h5 class="mb-0">Score Distributions for ${document.getElementById('instructor').value.trim() || 'instructor'} across all sections</h5>
-                            <small class="text-muted" style="font-size: 0.8em;">Searched from ${startYear ? 'Fall ' + startYear : 'earliest'} to ${endYear ? 'Spring ' + endYear : 'latest'}</small>
-                        </div>
+                        <h5 class="mb-0">Score Distributions for ${document.getElementById('instructor').value.trim() || 'instructor'} across all sections</h5>
                     </div>
                     <div class="card-body">
                         <div id="scoreDistributionsContent"></div>
                     </div>
                 </div>
-                <div class="card">
+                <div class="card mb-3" id="outlierDetection">
                     <div class="card-header bg-success text-white">
-                        <div>
-                            <h5 class="mb-0">By-course analysis for ${document.getElementById('instructor').value.trim() || 'instructor'}</h5>
-                            <small class="text-muted" style="font-size: 0.8em;">Searched from ${startYear ? 'Fall ' + startYear : 'earliest'} to ${endYear ? 'Spring ' + endYear : 'latest'}</small>
+                        <h5 class="mb-0">Outlier Detection for ${document.getElementById('instructor').value.trim() || 'instructor'}</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="outlierDetectionContent">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading outlier data...</span>
+                                </div>
+                                <p class="mt-3 mb-0">Loading outlier data...</p>
+                            </div>
                         </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">By-course analysis for ${document.getElementById('instructor').value.trim() || 'instructor'}</h5>
                         <button class="btn btn-outline-dark btn-sm" onclick="downloadData()">
                             <svg width="16" height="16" fill="currentColor" class="bi bi-download me-1" viewBox="0 0 16 16">
                                 <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
@@ -2005,6 +2204,10 @@
             
             // Set initial HTML structure
             resultsDiv.innerHTML = html;
+
+            // Initialize Bootstrap tooltips for the overview section
+            const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+            const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
             // Display score distributions
             displayScoreDistributions(courseGroups);
@@ -2021,8 +2224,8 @@
                 const termsCount = termsData && Array.isArray(termsData.Value) ? termsData.Value.length : 0;
                 const termsBadge = termsCount > 0 ? `<span class="badge bg-info ms-2">${termsCount} ${termsCount === 1 ? 'term' : 'terms'} taught</span>` : '';
                 
-                // Find total sections data for this course
-                const sectionsData = courseData.find(row => row.Metric === 'Total_Sections');
+                // Find total sections data for this course (All_Sections includes all sections, even those with < 10 enrollment)
+                const sectionsData = courseData.find(row => row.Metric === 'All_Sections');
                 const sectionsCount = sectionsData ? sectionsData.Value : 0;
                 const sectionsBadge = sectionsCount > 0 ? `<span class="badge bg-secondary ms-2">${sectionsCount} ${sectionsCount === 1 ? 'section' : 'sections'} taught</span>` : '';
                 
@@ -2045,7 +2248,7 @@
                 
                 // Build instructor-specific data
                 // Define metric categories and order
-                const metaMetrics = ['Total_Sections', 'Response_Rate', 'Terms'];
+                const metaMetrics = ['All_Sections', 'Response_Rate', 'Terms'];
                 const courseMetrics = ['Interact', 'Reflect', 'Connect', 'Collab', 'Eval', 'Synth', 'Diverse'];
                 const instructorMetrics = ['Respect', 'Challenge', 'Creative', 'Discuss', 'Feedback', 'Grading', 'Questions', 'Tech'];
 
@@ -2110,8 +2313,8 @@
                             value = value.join(', ');
                         }
                         rowClass = 'terms-taught-row-left';
-                    } else if (row.Metric === 'Total_Sections') {
-                        displayMetric = 'Total Sections';
+                    } else if (row.Metric === 'All_Sections') {
+                        displayMetric = 'Sections Taught';
                         badgeClass = 'bg-secondary';
                         rowClass = 'total-sections-row-left';
                     }
@@ -2260,7 +2463,7 @@
                     `;
 
                     // Define metric categories and order
-                    const metaMetrics = ['Total_Sections', 'Response_Rate', 'Terms'];
+                    const metaMetrics = ['All_Sections', 'Response_Rate', 'Terms'];
                     const courseMetrics = ['Interact', 'Reflect', 'Connect', 'Collab', 'Eval', 'Synth', 'Diverse'];
                     const instructorMetrics = ['Respect', 'Challenge', 'Creative', 'Discuss', 'Feedback', 'Grading', 'Questions', 'Tech'];
 
@@ -2316,8 +2519,8 @@
                                 value = value.join(', ');
                             }
                             rowClass = 'terms-taught-row-right';
-                        } else if (row.Metric === 'Total_Sections') {
-                            displayMetric = 'Total Sections';
+                        } else if (row.Metric === 'All_Sections') {
+                            displayMetric = 'Sections Taught';
                             badgeClass = 'bg-secondary';
                             rowClass = 'total-sections-row-right';
                         }
@@ -2438,10 +2641,7 @@
                 alert('No data to download');
                 return;
             }
-            
-            console.log('Download data - This Instructor:', currentData?.length || 0, 'rows');
-            console.log('Download data - All Instructors:', allInstructorsDataForDownload?.length || 0, 'rows');
-            
+
             // Create a comparison table structure
             const comparisonData = new Map();
             
