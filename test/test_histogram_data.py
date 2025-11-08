@@ -56,7 +56,6 @@ def test_get_section_scores_for_histogram():
         print(f"  ✓ All scores in valid range (1-5)")
 
     print("\n✓ Test passed!")
-    return True
 
 
 def test_get_section_scores_for_histogram_2():
@@ -83,7 +82,6 @@ def test_get_section_scores_for_histogram_2():
     # See test/fixtures/test_heather_2020_2021.xlsx
     assert int(df["Score"].value_counts()[5]) == 3
     assert int(df["Score"].value_counts()[4]) == 8
-    return True
 
 def test_get_section_scores_for_histogram_3():
 
@@ -110,7 +108,6 @@ def test_get_section_scores_for_histogram_3():
     # There are 6 total sections, with 4 scoring 5 and 2 scoring 4
     assert int(df_reflect["Score"].value_counts()[5]) == 4
     assert int(df_reflect["Score"].value_counts()[4]) == 2
-    return True
 
 def test_histogram_sections_match_filter_data_total_sections():
     """
