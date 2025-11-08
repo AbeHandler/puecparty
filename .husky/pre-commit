@@ -1,0 +1,24 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "Running pre-commit checks..."
+
+# Run Python tests
+echo "Running Python tests..."
+python3 -m pytest test/
+if [ $? -ne 0 ]; then
+  echo "❌ Python tests failed. Commit aborted."
+  exit 1
+fi
+echo "✅ Python tests passed."
+
+# Run Cypress tests
+echo "Running Cypress tests..."
+npm test
+if [ $? -ne 0 ]; then
+  echo "❌ Cypress tests failed. Commit aborted."
+  exit 1
+fi
+echo "✅ Cypress tests passed."
+
+echo "✅ All tests passed! Proceeding with commit."

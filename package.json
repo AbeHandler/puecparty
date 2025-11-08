@@ -1,0 +1,22 @@
+{
+  "name": "puecparty",
+  "version": "1.0.0",
+  "description": "The lambda reads data from a s3 bucket. Set it up like this. - `aws s3 mb s3://ucbfcqs # allow public read in AWS UI` - `aws s3 cp /tmp/fcq.csv s3://ucbfcqs/fcq.csv`",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "cypress run",
+    "test:open": "cypress open",
+    "test:headless": "cypress run --headless",
+    "prepare": "husky"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "cypress": "^15.6.0",
+    "husky": "^9.1.7"
+  }
+}

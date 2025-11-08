@@ -1,2 +1,11 @@
 __pycache__/*
 *__pycache__*
+
+# Node.js / npm
+node_modules/
+package-lock.json
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
