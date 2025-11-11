@@ -393,8 +393,8 @@
     <div class="header-accent"></div>
     <div class="container main-container">
         <div class="row justify-content-center">
-            <div class="col-lg-8 col-xl-7">
-                <div class="card">
+            <div style="display: flex; justify-content: center; width: 100%;">
+                <div class="card" style="width: 900px;">
                     <div class="card-header">
                         <h1 class="mb-0">PUEC Party 🥳</h1>
                         <p class="mb-0 mt-2">Process Faculty Course Questionnaires</p>
@@ -951,9 +951,10 @@
                         </form>
                     </div>
                 </div>
-
-                <div id="results" class="mt-4" style="display: none;"></div>
             </div>
+        </div>
+        <div class="row justify-content-center">
+            <div id="results" class="mt-4" style="display: none; flex-direction: column; align-items: center;"></div>
         </div>
     </div>
 
@@ -1121,7 +1122,7 @@
                 : null;
 
             // Create a container for the dot chart - sized to fit column
-            const svgWidth = 500;  // Match column width
+            const svgWidth = 585;  // Match column width
             const svgHeight = 30;
             const margin = { left: 15, right: 15 };  // More margin to prevent clipping
             const chartWidth = svgWidth - margin.left - margin.right;
@@ -1134,8 +1135,8 @@
                 return ((value - scaleMin) / scaleRange) * chartWidth;
             };
 
-            // Create SVG with border for visibility - LEFT ALIGNED to prevent overflow
-            let svg = `<div style="overflow: visible;"><svg width="${svgWidth}" height="${svgHeight}" style="display: block; border: 1px solid #e5e7eb; background: #f9fafb; padding: 2px;">`;
+            // Create SVG with border for visibility - CENTERED
+            let svg = `<div style="overflow: visible; display: flex; flex-direction: column; align-items: center;"><svg width="${svgWidth}" height="${svgHeight}" style="display: block; border: 1px solid #e5e7eb; background: #f9fafb; padding: 2px;">`;
 
             // Draw a subtle baseline
             svg += `<line x1="${margin.left}" y1="${svgHeight/2}" x2="${svgWidth - margin.right}" y2="${svgHeight/2}" stroke="#d1d5db" stroke-width="1"/>`;
@@ -1172,7 +1173,7 @@
             svg += '</svg></div>';
 
             // Add legend below the chart with VERTICAL lines
-            let legend = '<div style="display: flex; gap: 20px; margin-top: 6px; font-size: 0.75em; color: #6b7280; justify-content: flex-start;">';
+            let legend = '<div style="display: flex; gap: 20px; margin-top: 6px; font-size: 0.75em; color: #6b7280; justify-content: center;">';
             if (highlightedMean !== null) {
                 legend += `<div style="display: flex; align-items: center; gap: 5px;">`;
                 legend += `<svg width="4" height="16" style="vertical-align: middle;"><line x1="2" y1="0" x2="2" y2="16" stroke="${highlightedColor}" stroke-width="4"/></svg>`;
@@ -1710,9 +1711,9 @@
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Loading...';
             
-            resultsDiv.style.display = 'block';
+            resultsDiv.style.display = 'flex';
             resultsDiv.innerHTML = `
-                <div class="card">
+                <div class="card" style="width: 900px;">
                     <div class="card-body text-center">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
@@ -2135,7 +2136,7 @@
             const endYear = document.getElementById('endYear').value;
 
             let html = `
-                <div class="card mb-3">
+                <div class="card mb-3" style="width: 900px;">
                     <div class="card-header bg-success text-white">
                         <h5 class="mb-0">Showing results from ${startYear ? 'Fall ' + startYear : 'earliest'} to ${endYear ? 'Spring ' + endYear : 'latest'}</h5>
                     </div>
@@ -2162,7 +2163,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="card mb-3" id="longitudinal">
+                <div class="card mb-3" id="longitudinal" style="width: 900px;">
                     <div class="card-header bg-success text-white">
                         <h5 class="mb-0">Trends for ${document.getElementById('instructor').value.trim() || 'instructor'}</h5>
                     </div>
@@ -2177,7 +2178,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="card mb-3" id="scoreDistributions" style="display: none;">
+                <div class="card mb-3" id="scoreDistributions" style="display: none; width: 900px;">
                     <div class="card-header bg-success text-white">
                         <h5 class="mb-0">Score Distributions for ${document.getElementById('instructor').value.trim() || 'instructor'} across all sections</h5>
                     </div>
@@ -2239,8 +2240,8 @@
                                 <div class="table-responsive">
                                     <table class="table table-sm table-bordered mb-0" style="table-layout: fixed; width: 700px;">
                                         <colgroup>
-                                            <col style="width: 200px;">
-                                            <col style="width: 500px;">
+                                            <col style="width: 75px;">
+                                            <col style="width: 625px;">
                                         </colgroup>
                                         <tbody>
                 `;
@@ -2344,8 +2345,8 @@
 
                     accordionItemHtml += `
                         <tr>
-                            <td style="width: 200px; overflow: hidden; text-overflow: ellipsis; vertical-align: top; border: 1px solid #dee2e6; padding: 8px;">${displayMetric}</td>
-                            <td style="width: 500px; vertical-align: top; border: 1px solid #dee2e6; padding: 8px;" class="dot-chart-cell" data-course-index="${index}" data-metric="${row.Metric}">
+                            <td style="width: 75px; overflow: hidden; text-overflow: ellipsis; vertical-align: top; border: 1px solid #dee2e6; padding: 8px;">${displayMetric}</td>
+                            <td style="width: 625px; vertical-align: top; border: 1px solid #dee2e6; padding: 8px;" class="dot-chart-cell" data-course-index="${index}" data-metric="${row.Metric}">
                                 <span class="text-muted" style="font-size: 0.75em;">Loading...</span>
                             </td>
                         </tr>
@@ -2369,8 +2370,8 @@
 
                     accordionItemHtml += `
                         <tr>
-                            <td style="width: 200px; overflow: hidden; text-overflow: ellipsis; vertical-align: top; border: 1px solid #dee2e6; padding: 8px;">${displayMetric}</td>
-                            <td style="width: 500px; vertical-align: top; border: 1px solid #dee2e6; padding: 8px;" class="dot-chart-cell" data-course-index="${index}" data-metric="${row.Metric}">
+                            <td style="width: 75px; overflow: hidden; text-overflow: ellipsis; vertical-align: top; border: 1px solid #dee2e6; padding: 8px;">${displayMetric}</td>
+                            <td style="width: 625px; vertical-align: top; border: 1px solid #dee2e6; padding: 8px;" class="dot-chart-cell" data-course-index="${index}" data-metric="${row.Metric}">
                                 <span class="text-muted" style="font-size: 0.75em;">Loading...</span>
                             </td>
                         </tr>
