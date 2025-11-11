@@ -480,21 +480,27 @@ def format_data(df):
     formatted_result = format_result_table_long(df)
     return prioritize_metrics_sort_corrected(formatted_result)
 
-def get_busn_metrics_stats(df, terms):
+def build_comparison_group(df, terms, course_title=None):
     """
-    Calculate mean and standard deviation for each metric across all BUSN instructors
-    during a given time period.
+    Build a comparison group of sections to compute statistics against.
+
+    This function encapsulates the logic for selecting which sections to compare against
+    when computing means, standard deviations, and z-scores.
 
     Args:
         df: The main FCQ dataframe (already filtered to BUSN college)
         terms: List of terms like ["Spring 2024", "Fall 2024"]
+        course_title: Optional course title to filter by. If provided, only sections
+                     teaching this specific course will be included in the comparison group.
+                     If None, all BUSN sections are included.
 
     Returns:
-        List of dicts with metric name, mean, and std for each evaluation metric
+        DataFrame with valid sections for the comparison group, or empty DataFrame if no data
     """
     # Validate inputs
     validate_terms(terms)
 
+    df = df.copy()
     df["Year"] = df["Year"].astype(int)
     df["Term_Year"] = df["Term"] + " " + df["Year"].astype(str)
 
@@ -502,6 +508,43 @@ def get_busn_metrics_stats(df, terms):
     filtered_df = df[df["Term_Year"].isin(terms)].copy()
 
     if len(filtered_df) == 0:
+        return pd.DataFrame()
+
+    # Optionally filter by course title
+    if course_title is not None:
+        filtered_df = filtered_df[filtered_df["Crse Title"] == course_title].copy()
+
+    if len(filtered_df) == 0:
+        return pd.DataFrame()
+
+    # Apply ValidForStats filtering logic
+    filtered_df = apply_valid_for_stats_filter(filtered_df)
+
+    # Only include sections valid for stats
+    valid_sections = filtered_df[filtered_df["ValidForStats"]].copy()
+
+    return valid_sections
+
+
+def get_busn_metrics_stats(df, terms, course_title=None):
+    """
+    Calculate mean and standard deviation for each metric across a comparison group
+    during a given time period.
+
+    Args:
+        df: The main FCQ dataframe (already filtered to BUSN college)
+        terms: List of terms like ["Spring 2024", "Fall 2024"]
+        course_title: Optional course title to filter by. If provided, statistics are
+                     computed only for instructors teaching this specific course.
+                     If None, all BUSN instructors are included.
+
+    Returns:
+        List of dicts with metric name, mean, and std for each evaluation metric
+    """
+    # Build the comparison group
+    valid_sections = build_comparison_group(df, terms, course_title)
+
+    if len(valid_sections) == 0:
         return []
 
     # Metrics we want statistics for
@@ -510,15 +553,6 @@ def get_busn_metrics_stats(df, terms):
         "Synth", "Diverse", "Respect", "Challenge", "Creative", "Discuss",
         "Feedback", "Grading", "Questions", "Tech",
     ]
-
-    # Apply ValidForStats filtering logic (shared method)
-    filtered_df = apply_valid_for_stats_filter(filtered_df)
-
-    # Only include sections valid for stats
-    valid_sections = filtered_df[filtered_df["ValidForStats"]].copy()
-
-    if len(valid_sections) == 0:
-        return []
 
     # Calculate mean and std for each metric
     results = []
@@ -687,35 +721,35 @@ def get_section_scores_for_histogram(df, instructor, terms):
     return results
 
 
-def get_section_z_scores(df, terms, instructor=None):
+def get_section_z_scores(df, terms, instructor=None, course_specific=False):
     """
-    Calculate z-scores for every section and every metric compared to BUSN-wide statistics.
+    Calculate z-scores for every section and every metric compared to a comparison group.
 
     This computes section-level z-scores (not aggregated by instructor). Each section gets
-    a z-score for each metric showing how many standard deviations it is from the BUSN mean.
+    a z-score for each metric showing how many standard deviations it is from the comparison mean.
 
     Args:
         df: The main FCQ dataframe (already filtered to BUSN college)
         terms: List of terms like ["Spring 2024", "Fall 2024"]
         instructor: Optional instructor name to filter by (default: all instructors)
+        course_specific: If True, compare each section to other sections of the same course.
+                        If False, compare to all BUSN sections (default: False)
 
     Returns:
         List of dicts with section-level z-scores for each metric
     """
-    # Get BUSN-wide statistics for the time period
-    busn_stats = get_busn_metrics_stats(df, terms)
-
-    if len(busn_stats) == 0:
-        return []
-
-    # Create a lookup dict for easy access to stats by metric
-    stats_by_metric = {stat["Metric"]: stat for stat in busn_stats}
-
     # Use common filtering logic (DRY)
     valid_sections = filter_and_prepare_sections(df, terms, instructor)
 
     if len(valid_sections) == 0:
         return []
+
+    # If not course-specific, compute global statistics once
+    if not course_specific:
+        busn_stats = get_busn_metrics_stats(df, terms, course_title=None)
+        if len(busn_stats) == 0:
+            return []
+        stats_by_metric = {stat["Metric"]: stat for stat in busn_stats}
 
     # Build results: one record per section per metric
     results = []
@@ -728,16 +762,25 @@ def get_section_z_scores(df, terms, instructor=None):
         section = row["Sect"]
         enrollment = int(row["Enroll"])
 
+        # If course-specific, compute statistics for this specific course
+        if course_specific:
+            course_stats = get_busn_metrics_stats(df, terms, course_title=course_title)
+            if len(course_stats) == 0:
+                continue
+            stats_by_metric = {stat["Metric"]: stat for stat in course_stats}
+
         for metric in EVALUATION_METRICS:
             if pd.notnull(row[metric]):
                 section_score = float(row[metric])
 
-                # Get BUSN stats for this metric
+                # Get comparison stats for this metric
                 stat = stats_by_metric.get(metric)
 
                 if stat and stat["Std"] > 0:
                     # Calculate z-score
                     z_score = (section_score - stat["Mean"]) / stat["Std"]
+
+                    comparison_label = course_title if course_specific else "BUSN"
 
                     results.append({
                         "Instructor": instructor_name,
@@ -748,15 +791,16 @@ def get_section_z_scores(df, terms, instructor=None):
                         "Enrollment": enrollment,
                         "Metric": metric,
                         "Section_Score": round(section_score, 2),
-                        "BUSN_Mean": stat["Mean"],
-                        "BUSN_Std": stat["Std"],
-                        "Z_Score": round(z_score, 2)
+                        f"{comparison_label}_Mean": stat["Mean"],
+                        f"{comparison_label}_Std": stat["Std"],
+                        "Z_Score": round(z_score, 2),
+                        "Comparison_Group": comparison_label
                     })
 
     return results
 
 
-def get_section_z_score_outliers(df, terms, instructor, threshold=3.0):
+def get_section_z_score_outliers(df, terms, instructor, threshold=3.0, course_specific=False):
     """
     Get section-level z-scores that are outliers (beyond a threshold).
 
@@ -768,13 +812,15 @@ def get_section_z_score_outliers(df, terms, instructor, threshold=3.0):
         df: The main FCQ dataframe (already filtered to BUSN college)
         terms: List of terms like ["Spring 2024", "Fall 2024"]
         instructor: Instructor name to filter by
-        threshold: Z-score threshold for outliers (default: 2.0)
+        threshold: Z-score threshold for outliers (default: 3.0)
+        course_specific: If True, compare each section to other sections of the same course.
+                        If False, compare to all BUSN sections (default: False)
 
     Returns:
         List of dicts with outlier section-metric combinations only
     """
     # Get all z-scores for the instructor
-    all_z_scores = get_section_z_scores(df, terms, instructor)
+    all_z_scores = get_section_z_scores(df, terms, instructor, course_specific=course_specific)
 
     # Filter for outliers only
     outliers = [
@@ -786,6 +832,78 @@ def get_section_z_score_outliers(df, terms, instructor, threshold=3.0):
     outliers.sort(key=lambda x: abs(x["Z_Score"]), reverse=True)
 
     return outliers
+
+
+def get_section_scores_by_course(df, terms, course_title, instructor_name=None):
+    """
+    Get section-level scores for all instructors teaching a specific course.
+
+    This returns raw section-level data for each metric, which can be used
+    to create dot charts or other visualizations showing score distributions
+    across different sections of the same course.
+
+    Args:
+        df: The main FCQ dataframe (already filtered to BUSN college)
+        terms: List of terms like ["Spring 2024", "Fall 2024"]
+        course_title: Course title to filter by (e.g., "Principles of Marketing")
+        instructor_name: Optional instructor name to highlight in results
+
+    Returns:
+        List of dicts with section-level scores for each metric, including:
+        - Instructor name
+        - Section identifier
+        - Metric name
+        - Score value
+        - Flag indicating if this is the "highlighted" instructor
+    """
+    # Validate inputs
+    validate_terms(terms)
+
+    df = df.copy()
+    df["Year"] = df["Year"].astype(int)
+    df["Term_Year"] = df["Term"] + " " + df["Year"].astype(str)
+
+    # Filter by course title and terms
+    filtered_df = df[df["Crse Title"] == course_title].copy()
+    filtered_df = filtered_df[filtered_df["Term_Year"].isin(terms)].copy()
+
+    if len(filtered_df) == 0:
+        return []
+
+    # Apply ValidForStats filtering logic
+    filtered_df = apply_valid_for_stats_filter(filtered_df)
+
+    # Only include sections valid for stats
+    valid_sections = filtered_df[filtered_df["ValidForStats"]].copy()
+
+    if len(valid_sections) == 0:
+        return []
+
+    # Build results: one record per section per metric
+    results = []
+
+    for _, row in valid_sections.iterrows():
+        instructor = row["Instructor Name"]
+        section = row["Sect"]
+        term_year = row["Term_Year"]
+        enrollment = int(row["Enroll"])
+
+        # Check if this is the highlighted instructor
+        is_highlighted = (instructor_name is not None and instructor == instructor_name)
+
+        for metric in EVALUATION_METRICS:
+            if pd.notnull(row[metric]):
+                results.append({
+                    "Instructor": instructor,
+                    "Section": section,
+                    "Term": term_year,
+                    "Enrollment": enrollment,
+                    "Metric": metric,
+                    "Score": float(row[metric]),
+                    "IsHighlighted": is_highlighted
+                })
+
+    return results
 
 
 def handle_longitudinal_scores_event(event):
@@ -888,13 +1006,14 @@ def handle_section_z_score_outliers_event(event, df):
     instructor = event.get("instructor")
     terms = event.get("terms")
     threshold = event.get("threshold", 2.0)
+    course_specific = event.get("course_specific", False)
 
     if not instructor:
         raise ValueError("Missing required field: 'instructor'")
     if not terms:
         raise ValueError("Missing required field: 'terms'")
 
-    data = get_section_z_score_outliers(df, terms, instructor, threshold)
+    data = get_section_z_score_outliers(df, terms, instructor, threshold, course_specific=course_specific)
 
     return {
         "statusCode": 200,
@@ -906,7 +1025,35 @@ def handle_section_z_score_outliers_event(event, df):
             "success": True,
             "data": data,
             "count": len(data),
-            "threshold": threshold
+            "threshold": threshold,
+            "course_specific": course_specific
+        })
+    }
+
+
+def handle_section_scores_by_course_event(event, df):
+    """Handle request for section-level scores for a specific course"""
+    course_title = event.get("course_title")
+    terms = event.get("terms")
+    instructor_name = event.get("instructor_name")
+
+    if not course_title:
+        raise ValueError("Missing required field: 'course_title'")
+    if not terms:
+        raise ValueError("Missing required field: 'terms'")
+
+    data = get_section_scores_by_course(df, terms, course_title, instructor_name)
+
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+        },
+        "body": json.dumps({
+            "success": True,
+            "data": data,
+            "count": len(data)
         })
     }
 
@@ -934,6 +1081,9 @@ def lambda_handler(event, context):
         elif action is not None and action == "get_section_z_score_outliers":
             df = load_df()
             return handle_section_z_score_outliers_event(event, df)
+        elif action is not None and action == "get_section_scores_by_course":
+            df = load_df()
+            return handle_section_scores_by_course_event(event, df)
 
         # Extract parameters for standard filter request
         instructor = event.get('instructor')
