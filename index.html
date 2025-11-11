@@ -1162,15 +1162,22 @@
                 const x = margin.left + scale(d.Score);
                 const y = svgHeight / 2;
                 const color = d.IsHighlighted ? highlightedColor : otherColor;
+                const opacity = d.IsHighlighted ? 0.8 : 0.4;  // Higher opacity for instructor, lower for others
                 const radius = 6;  // Increased from 4
 
-                // Add circle for the score with less transparency
-                svg += `<circle cx="${x}" cy="${y}" r="${radius}" fill="${color}" opacity="0.75" stroke="white" stroke-width="0.5">`;
+                // Add circle for the score with different opacity for instructor vs others
+                svg += `<circle cx="${x}" cy="${y}" r="${radius}" fill="${color}" opacity="${opacity}" stroke="white" stroke-width="0.5">`;
                 svg += `<title>${d.Instructor} (Section ${d.Section}, ${d.Term}): ${d.Score.toFixed(2)}</title>`;
                 svg += `</circle>`;
             });
 
-            svg += '</svg></div>';
+            svg += '</svg>';
+
+            // Add scale indicators below the chart
+            svg += '<div style="display: flex; justify-content: space-between; width: ' + svgWidth + 'px; padding: 0 ' + margin.left + 'px; margin-top: 2px; box-sizing: border-box;">';
+            svg += '<span style="font-size: 0.7em; color: #6b7280;">1</span>';
+            svg += '<span style="font-size: 0.7em; color: #6b7280;">5</span>';
+            svg += '</div></div>';
 
             // Add legend below the chart with VERTICAL lines
             let legend = '<div style="display: flex; gap: 20px; margin-top: 6px; font-size: 0.75em; color: #6b7280; justify-content: center;">';
@@ -2238,11 +2245,7 @@
                         <div id="${accordionId}" class="accordion-collapse collapse" aria-labelledby="heading${index}" data-bs-parent="#courseAccordion">
                             <div class="accordion-body" style="display: flex; justify-content: center;">
                                 <div class="table-responsive">
-                                    <table class="table table-sm table-bordered mb-0" style="table-layout: fixed; width: 700px;">
-                                        <colgroup>
-                                            <col style="width: 75px;">
-                                            <col style="width: 625px;">
-                                        </colgroup>
+                                    <table class="table table-sm table-bordered mb-0" style="width: 700px;">
                                         <tbody>
                 `;
                 
@@ -2303,23 +2306,23 @@
 
                 accordionItemHtml += `
                     <tr style="background-color: #f9fafb;">
-                        <td colspan="2" style="border: 1px solid #dee2e6; padding: 8px;">
-                            <div style="display: flex; align-items: center; gap: 15px;">
+                        <td colspan="2" style="border: none; padding: 8px;">
+                            <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                                 <div style="display: flex; align-items: center; gap: 5px;">
-                                    <strong style="color: #052c65;">—</strong>
+                                    <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#052c65" opacity="0.8" stroke="white" stroke-width="0.5"/></svg>
                                     <strong>This Instructor (${document.getElementById('instructor').value.trim() || 'instructor'}):</strong>
                                 </div>
                                 <span>${instructorSections} sections</span>
                                 <span>${responseRateDisplay} response rate</span>
-                                <span style="font-size: 0.85em; color: #6b7280;">${termsDisplay}</span>
+                                <span style="font-size: 0.85em; color: #6b7280;"><strong>Terms taught:</strong> ${termsDisplay}</span>
                             </div>
                         </td>
                     </tr>
                     <tr style="background-color: #f9fafb;" id="other-instructors-meta-${index}">
-                        <td colspan="2" style="border: 1px solid #dee2e6; padding: 8px;">
+                        <td colspan="2" style="border: none; padding: 8px;">
                             <div style="display: flex; align-items: center; gap: 15px;">
                                 <div style="display: flex; align-items: center; gap: 5px;">
-                                    <strong style="color: #9ca3af;">—</strong>
+                                    <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#9ca3af" opacity="0.4" stroke="white" stroke-width="0.5"/></svg>
                                     <strong>Other Instructors:</strong>
                                 </div>
                                 <span class="text-muted" style="font-size: 0.85em;">Loading...</span>
@@ -2328,25 +2331,49 @@
                     </tr>
                 `;
 
-                // Add "this course" label
+                // Add legend first, then course label before first row
                 if (courseRows.length > 0) {
                     accordionItemHtml += `
                         <tr>
-                            <td colspan="2" style="padding-top: 12px; padding-bottom: 4px; ${metaRows.length > 0 ? 'border-top: 1px solid #e5e7eb;' : ''} border-bottom: none;">
-                                <span style="color: #9ca3af; font-size: 0.85em; font-style: italic;">In this course, I was encouraged to</span>
+                            <td colspan="2" style="padding: 8px; border: none;">
+                                <!-- Legend for dot colors -->
+                                <div style="display: flex; gap: 20px; padding: 6px; justify-content: center;">
+                                    <div style="display: flex; align-items: center; gap: 5px; font-size: 0.85em;">
+                                        <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#052c65" opacity="0.8" stroke="white" stroke-width="0.5"/></svg>
+                                        <span>Section taught by ${document.getElementById('instructor').value.trim() || 'instructor'}</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 5px; font-size: 0.85em;">
+                                        <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#9ca3af" opacity="0.4" stroke="white" stroke-width="0.5"/></svg>
+                                        <span>Section taught by other instructor</span>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                     `;
                 }
 
-                // Render course-level metrics
-                courseRows.forEach(row => {
-                    let displayMetric = wrapMetricWithTooltip(row.Metric);
+                // Render course-level metrics - now with full question text as header
+                courseRows.forEach((row, idx) => {
+                    // Add label right before the first visualization row
+                    if (idx === 0) {
+                        accordionItemHtml += `
+                            <tr>
+                                <td colspan="2" style="padding-top: 16px; padding-bottom: 12px; border: none;">
+                                    <div style="font-size: 1.2em; font-weight: 700; color: #111827;">In this course, I was encouraged to</div>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                    const questionText = tooltips[row.Metric] || row.Metric;
 
                     accordionItemHtml += `
                         <tr>
-                            <td style="width: 75px; overflow: hidden; text-overflow: ellipsis; vertical-align: top; border: 1px solid #dee2e6; padding: 8px;">${displayMetric}</td>
-                            <td style="width: 625px; vertical-align: top; border: 1px solid #dee2e6; padding: 8px;" class="dot-chart-cell" data-course-index="${index}" data-metric="${row.Metric}">
+                            <td style="border: none; padding: 8px 8px 6px 8px;">
+                                <div style="font-size: 0.95em; font-weight: 600; color: #374151;">${questionText}</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="border: none; padding: 4px 8px 12px 8px;" class="dot-chart-cell" data-course-index="${index}" data-metric="${row.Metric}">
                                 <span class="text-muted" style="font-size: 0.75em;">Loading...</span>
                             </td>
                         </tr>
@@ -2357,21 +2384,25 @@
                 if (instructorRows.length > 0) {
                     accordionItemHtml += `
                         <tr>
-                            <td colspan="2" style="padding-top: 12px; padding-bottom: 4px; border-top: 1px solid #e5e7eb; border-bottom: none;">
-                                <span style="color: #9ca3af; font-size: 0.85em; font-style: italic;">In this course, the instructor</span>
+                            <td colspan="2" style="padding-top: 16px; padding-bottom: 12px; border: none;">
+                                <div style="font-size: 1.2em; font-weight: 700; color: #111827;">In this course, the instructor</div>
                             </td>
                         </tr>
                     `;
                 }
 
-                // Render instructor-level metrics
+                // Render instructor-level metrics - now with full question text as header
                 instructorRows.forEach(row => {
-                    let displayMetric = wrapMetricWithTooltip(row.Metric);
+                    const questionText = tooltips[row.Metric] || row.Metric;
 
                     accordionItemHtml += `
                         <tr>
-                            <td style="width: 75px; overflow: hidden; text-overflow: ellipsis; vertical-align: top; border: 1px solid #dee2e6; padding: 8px;">${displayMetric}</td>
-                            <td style="width: 625px; vertical-align: top; border: 1px solid #dee2e6; padding: 8px;" class="dot-chart-cell" data-course-index="${index}" data-metric="${row.Metric}">
+                            <td style="border: none; padding: 8px 8px 6px 8px;">
+                                <div style="font-size: 0.95em; font-weight: 600; color: #374151;">${questionText}</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="border: none; padding: 4px 8px 12px 8px;" class="dot-chart-cell" data-course-index="${index}" data-metric="${row.Metric}">
                                 <span class="text-muted" style="font-size: 0.75em;">Loading...</span>
                             </td>
                         </tr>
@@ -2486,15 +2517,15 @@
                     const otherMetaRow = document.getElementById(`other-instructors-meta-${index}`);
                     if (otherMetaRow) {
                         otherMetaRow.innerHTML = `
-                            <td colspan="2" style="border: 1px solid #dee2e6; padding: 8px;">
-                                <div style="display: flex; align-items: center; gap: 15px;">
+                            <td colspan="2" style="border: none; padding: 8px;">
+                                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                                     <div style="display: flex; align-items: center; gap: 5px;">
-                                        <strong style="color: #9ca3af;">—</strong>
+                                        <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#9ca3af" opacity="0.4" stroke="white" stroke-width="0.5"/></svg>
                                         <strong>Other Instructors:</strong>
                                     </div>
                                     <span>${otherSections} sections</span>
                                     <span>${otherResponseRate} response rate</span>
-                                    <span style="font-size: 0.85em; color: #6b7280;">${otherTerms}</span>
+                                    <span style="font-size: 0.85em; color: #6b7280;"><strong>Terms taught:</strong> ${otherTerms}</span>
                                 </div>
                             </td>
                         `;
@@ -2503,10 +2534,10 @@
                     const otherMetaRow = document.getElementById(`other-instructors-meta-${index}`);
                     if (otherMetaRow) {
                         otherMetaRow.innerHTML = `
-                            <td colspan="2" style="border: 1px solid #dee2e6; padding: 8px;">
+                            <td colspan="2" style="border: none; padding: 8px;">
                                 <div style="display: flex; align-items: center; gap: 15px;">
                                     <div style="display: flex; align-items: center; gap: 5px;">
-                                        <strong style="color: #9ca3af;">—</strong>
+                                        <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#9ca3af" opacity="0.4" stroke="white" stroke-width="0.5"/></svg>
                                         <strong>Other Instructors:</strong>
                                     </div>
                                     <span class="text-muted" style="font-size: 0.85em;">No data available</span>
