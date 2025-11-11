@@ -1135,11 +1135,11 @@
                 return ((value - scaleMin) / scaleRange) * chartWidth;
             };
 
-            // Create SVG with border for visibility - CENTERED
-            let svg = `<div style="overflow: visible; display: flex; flex-direction: column; align-items: center;"><svg width="${svgWidth}" height="${svgHeight}" style="display: block; border: 1px solid #e5e7eb; background: #f9fafb; padding: 2px;">`;
+            // Create SVG without border - CENTERED
+            let svg = `<div style="overflow: visible; display: flex; flex-direction: column; align-items: center;"><svg width="${svgWidth}" height="${svgHeight}" style="display: block; padding: 2px;">`;
 
-            // Draw a subtle baseline
-            svg += `<line x1="${margin.left}" y1="${svgHeight/2}" x2="${svgWidth - margin.right}" y2="${svgHeight/2}" stroke="#d1d5db" stroke-width="1"/>`;
+            // Draw a baseline
+            svg += `<line x1="${margin.left}" y1="${svgHeight/2}" x2="${svgWidth - margin.right}" y2="${svgHeight/2}" stroke="#d1d5db" stroke-width="2"/>`;
 
             // Draw mean line for other instructors (behind dots) - THICKER and FULL HEIGHT
             if (otherMean !== null) {
@@ -2245,7 +2245,7 @@
                         <div id="${accordionId}" class="accordion-collapse collapse" aria-labelledby="heading${index}" data-bs-parent="#courseAccordion">
                             <div class="accordion-body" style="display: flex; justify-content: center;">
                                 <div class="table-responsive">
-                                    <table class="table table-sm table-bordered mb-0" style="width: 700px;">
+                                    <table class="table table-sm mb-0" style="width: 700px;">
                                         <tbody>
                 `;
                 
@@ -2307,14 +2307,16 @@
                 accordionItemHtml += `
                     <tr style="background-color: #f9fafb;">
                         <td colspan="2" style="border: none; padding: 8px;">
-                            <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                                <div style="display: flex; align-items: center; gap: 5px;">
-                                    <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#052c65" opacity="0.8" stroke="white" stroke-width="0.5"/></svg>
-                                    <strong>This Instructor (${document.getElementById('instructor').value.trim() || 'instructor'}):</strong>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                                    <div style="display: flex; align-items: center; gap: 5px;">
+                                        <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#052c65" opacity="0.8" stroke="white" stroke-width="0.5"/></svg>
+                                        <strong>This Instructor (${document.getElementById('instructor').value.trim() || 'instructor'}):</strong>
+                                    </div>
+                                    <span>${instructorSections} sections</span>
+                                    <span>${responseRateDisplay} response rate</span>
                                 </div>
-                                <span>${instructorSections} sections</span>
-                                <span>${responseRateDisplay} response rate</span>
-                                <span style="font-size: 0.85em; color: #6b7280;"><strong>Terms taught:</strong> ${termsDisplay}</span>
+                                <div style="font-size: 0.85em; color: #6b7280; padding-left: 17px;"><strong>Terms taught:</strong> ${termsDisplay}</div>
                             </div>
                         </td>
                     </tr>
@@ -2518,14 +2520,16 @@
                     if (otherMetaRow) {
                         otherMetaRow.innerHTML = `
                             <td colspan="2" style="border: none; padding: 8px;">
-                                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                                    <div style="display: flex; align-items: center; gap: 5px;">
-                                        <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#9ca3af" opacity="0.4" stroke="white" stroke-width="0.5"/></svg>
-                                        <strong>Other Instructors:</strong>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                                        <div style="display: flex; align-items: center; gap: 5px;">
+                                            <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#9ca3af" opacity="0.4" stroke="white" stroke-width="0.5"/></svg>
+                                            <strong>Other Instructors:</strong>
+                                        </div>
+                                        <span>${otherSections} sections</span>
+                                        <span>${otherResponseRate} response rate</span>
                                     </div>
-                                    <span>${otherSections} sections</span>
-                                    <span>${otherResponseRate} response rate</span>
-                                    <span style="font-size: 0.85em; color: #6b7280;"><strong>Terms taught:</strong> ${otherTerms}</span>
+                                    <div style="font-size: 0.85em; color: #6b7280; padding-left: 17px;"><strong>Terms taught:</strong> ${otherTerms}</div>
                                 </div>
                             </td>
                         `;
