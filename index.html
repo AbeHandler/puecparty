@@ -398,6 +398,7 @@
                     <div class="card-header">
                         <h1 class="mb-0">PUEC Party 🥳</h1>
                         <p class="mb-0 mt-2">Process Faculty Course Questionnaires</p>
+                        <p class="mb-0 mt-1" style="font-size: 0.9em;">Based on raw data available <a href="https://www.colorado.edu/fcq/media/42" target="_blank" style="color: #052c65; text-decoration: underline;">here</a></p>
                     </div>
                     <div class="card-body p-4">
                         <form id="filterForm">
@@ -1158,15 +1159,16 @@
             }
 
             // Draw dots for each section (on top of lines) - BIGGER with LESS TRANSPARENCY
-            metricData.forEach(d => {
+            metricData.forEach((d, idx) => {
                 const x = margin.left + scale(d.Score);
                 const y = svgHeight / 2;
                 const color = d.IsHighlighted ? highlightedColor : otherColor;
                 const opacity = d.IsHighlighted ? 0.8 : 0.4;  // Higher opacity for instructor, lower for others
                 const radius = 6;  // Increased from 4
+                const dotClass = d.IsHighlighted ? 'instructor-dot' : 'other-dot';
 
-                // Add circle for the score with different opacity for instructor vs others
-                svg += `<circle cx="${x}" cy="${y}" r="${radius}" fill="${color}" opacity="${opacity}" stroke="white" stroke-width="0.5">`;
+                // Add circle for the score with different opacity for instructor vs others and hover effect
+                svg += `<circle class="${dotClass}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" opacity="${opacity}" stroke="white" stroke-width="0.5" style="cursor: pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='${opacity}'">`;
                 svg += `<title>${d.Instructor} (Section ${d.Section}, ${d.Term}): ${d.Score.toFixed(2)}</title>`;
                 svg += `</circle>`;
             });
@@ -2340,11 +2342,15 @@
                             <td colspan="2" style="padding: 8px; border: none;">
                                 <!-- Legend for dot colors -->
                                 <div style="display: flex; gap: 20px; padding: 6px; justify-content: center;">
-                                    <div style="display: flex; align-items: center; gap: 5px; font-size: 0.85em;">
+                                    <div style="display: flex; align-items: center; gap: 5px; font-size: 0.85em; cursor: pointer;"
+                                         onmouseover="document.querySelectorAll('.instructor-dot').forEach(d => d.style.opacity = '1')"
+                                         onmouseout="document.querySelectorAll('.instructor-dot').forEach(d => d.style.opacity = '0.8')">
                                         <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#052c65" opacity="0.8" stroke="white" stroke-width="0.5"/></svg>
                                         <span>Section taught by ${document.getElementById('instructor').value.trim() || 'instructor'}</span>
                                     </div>
-                                    <div style="display: flex; align-items: center; gap: 5px; font-size: 0.85em;">
+                                    <div style="display: flex; align-items: center; gap: 5px; font-size: 0.85em; cursor: pointer;"
+                                         onmouseover="document.querySelectorAll('.other-dot').forEach(d => d.style.opacity = '1')"
+                                         onmouseout="document.querySelectorAll('.other-dot').forEach(d => d.style.opacity = '0.4')">
                                         <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#9ca3af" opacity="0.4" stroke="white" stroke-width="0.5"/></svg>
                                         <span>Section taught by other instructor</span>
                                     </div>
@@ -3172,7 +3178,7 @@
     </script>
 
     <footer style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid #e5e7eb; color: #6c757d; font-size: 0.9em;">
-        <div>Version 1.5.0</div>
+        <div>Version 1.5.1</div>
         <div style="margin-top: 5px;">Please send suggestions or bug reports to abram.handler@gmail.com</div>
     </footer>
 </body>

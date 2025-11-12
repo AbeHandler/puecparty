@@ -11,10 +11,13 @@ def test_fcq_processor_with_instructor():
     if os.path.exists(output_file):
         os.remove(output_file)
 
+    # Get the path to the test fixture
+    fixture_path = os.path.join(os.path.dirname(__file__), 'fixtures', 'fcq.csv')
+
     # Run the command
     result = subprocess.run([
         "python", "fcq_processor.py",
-        "--file", "fcq.csv",
+        "--file", fixture_path,
         "--instructor", "Papuzza, Antonio",
         "--terms", "Spring 2024", "Fall 2024"
     ], capture_output=True, text=True)
