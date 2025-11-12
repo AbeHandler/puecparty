@@ -306,6 +306,13 @@
         .histogram-tab-content.active {
             display: block;
         }
+        /* Speed up SVG title (tooltip) appearance */
+        svg title {
+            pointer-events: none;
+        }
+        svg circle:hover title {
+            display: block;
+        }
     </style>
 
     <script>
@@ -398,7 +405,7 @@
                     <div class="card-header">
                         <h1 class="mb-0">PUEC Party 🥳</h1>
                         <p class="mb-0 mt-2">Process Faculty Course Questionnaires</p>
-                        <p class="mb-0 mt-1" style="font-size: 0.9em;">Based on raw data available <a href="https://www.colorado.edu/fcq/media/42" target="_blank" style="color: #052c65; text-decoration: underline;">here</a></p>
+                        <p class="mb-0 mt-1" style="font-size: 0.75em; color: #9ca3af;">Based on raw data available <a href="https://www.colorado.edu/fcq/media/42" target="_blank" style="color: #6b7280; text-decoration: underline;">here</a></p>
                     </div>
                     <div class="card-body p-4">
                         <form id="filterForm">
@@ -1163,12 +1170,12 @@
                 const x = margin.left + scale(d.Score);
                 const y = svgHeight / 2;
                 const color = d.IsHighlighted ? highlightedColor : otherColor;
-                const opacity = d.IsHighlighted ? 0.8 : 0.4;  // Higher opacity for instructor, lower for others
+                const opacity = d.IsHighlighted ? 0.6 : 0.4;  // Lower opacity for instructor for better hover contrast, lower for others
                 const radius = 6;  // Increased from 4
                 const dotClass = d.IsHighlighted ? 'instructor-dot' : 'other-dot';
 
                 // Add circle for the score with different opacity for instructor vs others and hover effect
-                svg += `<circle class="${dotClass}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" opacity="${opacity}" stroke="white" stroke-width="0.5" style="cursor: pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='${opacity}'">`;
+                svg += `<circle class="${dotClass}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" opacity="${opacity}" stroke="white" stroke-width="0.5" style="cursor: pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='${opacity}'">`;
                 svg += `<title>${d.Instructor} (Section ${d.Section}, ${d.Term}): ${d.Score.toFixed(2)}</title>`;
                 svg += `</circle>`;
             });
@@ -2311,8 +2318,10 @@
                         <td colspan="2" style="border: none; padding: 8px;">
                             <div style="display: flex; flex-direction: column; gap: 8px;">
                                 <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                                    <div style="display: flex; align-items: center; gap: 5px;">
-                                        <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#052c65" opacity="0.8" stroke="white" stroke-width="0.5"/></svg>
+                                    <div style="display: flex; align-items: center; gap: 5px; cursor: pointer;"
+                                         onmouseover="this.querySelector('circle').style.opacity = '1'"
+                                         onmouseout="this.querySelector('circle').style.opacity = '0.6'">
+                                        <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#052c65" opacity="0.6" stroke="white" stroke-width="0.5"/></svg>
                                         <strong>This Instructor (${document.getElementById('instructor').value.trim() || 'instructor'}):</strong>
                                     </div>
                                     <span>${instructorSections} sections</span>
@@ -2343,14 +2352,14 @@
                                 <!-- Legend for dot colors -->
                                 <div style="display: flex; gap: 20px; padding: 6px; justify-content: center;">
                                     <div style="display: flex; align-items: center; gap: 5px; font-size: 0.85em; cursor: pointer;"
-                                         onmouseover="document.querySelectorAll('.instructor-dot').forEach(d => d.style.opacity = '1')"
-                                         onmouseout="document.querySelectorAll('.instructor-dot').forEach(d => d.style.opacity = '0.8')">
-                                        <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#052c65" opacity="0.8" stroke="white" stroke-width="0.5"/></svg>
+                                         onmouseover="document.querySelectorAll('.instructor-dot').forEach(d => d.style.opacity = '1'); this.querySelector('circle').style.opacity = '1';"
+                                         onmouseout="document.querySelectorAll('.instructor-dot').forEach(d => d.style.opacity = '0.6'); this.querySelector('circle').style.opacity = '0.6';">
+                                        <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#052c65" opacity="0.6" stroke="white" stroke-width="0.5"/></svg>
                                         <span>Section taught by ${document.getElementById('instructor').value.trim() || 'instructor'}</span>
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 5px; font-size: 0.85em; cursor: pointer;"
-                                         onmouseover="document.querySelectorAll('.other-dot').forEach(d => d.style.opacity = '1')"
-                                         onmouseout="document.querySelectorAll('.other-dot').forEach(d => d.style.opacity = '0.4')">
+                                         onmouseover="document.querySelectorAll('.other-dot').forEach(d => d.style.opacity = '1'); this.querySelector('circle').style.opacity = '1';"
+                                         onmouseout="document.querySelectorAll('.other-dot').forEach(d => d.style.opacity = '0.4'); this.querySelector('circle').style.opacity = '0.4';">
                                         <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#9ca3af" opacity="0.4" stroke="white" stroke-width="0.5"/></svg>
                                         <span>Section taught by other instructor</span>
                                     </div>
@@ -2528,7 +2537,9 @@
                             <td colspan="2" style="border: none; padding: 8px;">
                                 <div style="display: flex; flex-direction: column; gap: 8px;">
                                     <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                                        <div style="display: flex; align-items: center; gap: 5px;">
+                                        <div style="display: flex; align-items: center; gap: 5px; cursor: pointer;"
+                                             onmouseover="this.querySelector('circle').style.opacity = '1'"
+                                             onmouseout="this.querySelector('circle').style.opacity = '0.4'">
                                             <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#9ca3af" opacity="0.4" stroke="white" stroke-width="0.5"/></svg>
                                             <strong>Other Instructors:</strong>
                                         </div>
@@ -2546,7 +2557,9 @@
                         otherMetaRow.innerHTML = `
                             <td colspan="2" style="border: none; padding: 8px;">
                                 <div style="display: flex; align-items: center; gap: 15px;">
-                                    <div style="display: flex; align-items: center; gap: 5px;">
+                                    <div style="display: flex; align-items: center; gap: 5px; cursor: pointer;"
+                                         onmouseover="this.querySelector('circle').style.opacity = '1'"
+                                         onmouseout="this.querySelector('circle').style.opacity = '0.4'">
                                         <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#9ca3af" opacity="0.4" stroke="white" stroke-width="0.5"/></svg>
                                         <strong>Other Instructors:</strong>
                                     </div>
