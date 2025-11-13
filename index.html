@@ -306,12 +306,18 @@
         .histogram-tab-content.active {
             display: block;
         }
-        /* Speed up SVG title (tooltip) appearance */
-        svg title {
+        /* Custom tooltip styling */
+        .custom-tooltip {
+            position: fixed;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 12px;
             pointer-events: none;
-        }
-        svg circle:hover title {
-            display: block;
+            z-index: 10000;
+            white-space: nowrap;
+            display: none;
         }
     </style>
 
@@ -338,6 +344,34 @@
       Questions: "Was available to answer questions or provide assistance",
       Tech: "Effectively used available technology to enhance learning"
     };
+
+    // Custom tooltip functions for instant display
+    let customTooltip = null;
+
+    function showTooltip(event, text) {
+      if (!customTooltip) {
+        customTooltip = document.createElement('div');
+        customTooltip.className = 'custom-tooltip';
+        document.body.appendChild(customTooltip);
+      }
+      customTooltip.textContent = text;
+      customTooltip.style.display = 'block';
+      customTooltip.style.left = (event.clientX + 10) + 'px';
+      customTooltip.style.top = (event.clientY + 10) + 'px';
+    }
+
+    function hideTooltip() {
+      if (customTooltip) {
+        customTooltip.style.display = 'none';
+      }
+    }
+
+    function moveTooltip(event) {
+      if (customTooltip && customTooltip.style.display === 'block') {
+        customTooltip.style.left = (event.clientX + 10) + 'px';
+        customTooltip.style.top = (event.clientY + 10) + 'px';
+      }
+    }
 
     // Helper function to wrap metric names with tooltips
     function wrapMetricWithTooltip(metricName) {
@@ -1173,10 +1207,14 @@
                 const opacity = d.IsHighlighted ? 0.6 : 0.4;  // Lower opacity for instructor for better hover contrast, lower for others
                 const radius = 6;  // Increased from 4
                 const dotClass = d.IsHighlighted ? 'instructor-dot' : 'other-dot';
+                const tooltipText = `${d.Instructor} (Section ${d.Section}, ${d.Term}): ${d.Score.toFixed(2)}`;
 
                 // Add circle for the score with different opacity for instructor vs others and hover effect
-                svg += `<circle class="${dotClass}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" opacity="${opacity}" stroke="white" stroke-width="0.5" style="cursor: pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='${opacity}'">`;
-                svg += `<title>${d.Instructor} (Section ${d.Section}, ${d.Term}): ${d.Score.toFixed(2)}</title>`;
+                svg += `<circle class="${dotClass}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" opacity="${opacity}" stroke="white" stroke-width="0.5" style="cursor: pointer;"
+                    data-tooltip="${tooltipText}"
+                    onmouseover="this.style.opacity='1'; showTooltip(event, this.getAttribute('data-tooltip'))"
+                    onmouseout="this.style.opacity='${opacity}'; hideTooltip()"
+                    onmousemove="moveTooltip(event)">`;
                 svg += `</circle>`;
             });
 
@@ -2319,8 +2357,8 @@
                             <div style="display: flex; flex-direction: column; gap: 8px;">
                                 <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                                     <div style="display: flex; align-items: center; gap: 5px; cursor: pointer;"
-                                         onmouseover="this.querySelector('circle').style.opacity = '1'"
-                                         onmouseout="this.querySelector('circle').style.opacity = '0.6'">
+                                         onmouseover="this.querySelector('circle').style.opacity = '1'; document.querySelectorAll('.instructor-dot').forEach(d => d.style.opacity = '1')"
+                                         onmouseout="this.querySelector('circle').style.opacity = '0.6'; document.querySelectorAll('.instructor-dot').forEach(d => d.style.opacity = '0.6')">
                                         <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#052c65" opacity="0.6" stroke="white" stroke-width="0.5"/></svg>
                                         <strong>This Instructor (${document.getElementById('instructor').value.trim() || 'instructor'}):</strong>
                                     </div>
@@ -2538,8 +2576,8 @@
                                 <div style="display: flex; flex-direction: column; gap: 8px;">
                                     <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                                         <div style="display: flex; align-items: center; gap: 5px; cursor: pointer;"
-                                             onmouseover="this.querySelector('circle').style.opacity = '1'"
-                                             onmouseout="this.querySelector('circle').style.opacity = '0.4'">
+                                             onmouseover="this.querySelector('circle').style.opacity = '1'; document.querySelectorAll('.other-dot').forEach(d => d.style.opacity = '1')"
+                                             onmouseout="this.querySelector('circle').style.opacity = '0.4'; document.querySelectorAll('.other-dot').forEach(d => d.style.opacity = '0.4')">
                                             <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#9ca3af" opacity="0.4" stroke="white" stroke-width="0.5"/></svg>
                                             <strong>Other Instructors:</strong>
                                         </div>
@@ -2558,8 +2596,8 @@
                             <td colspan="2" style="border: none; padding: 8px;">
                                 <div style="display: flex; align-items: center; gap: 15px;">
                                     <div style="display: flex; align-items: center; gap: 5px; cursor: pointer;"
-                                         onmouseover="this.querySelector('circle').style.opacity = '1'"
-                                         onmouseout="this.querySelector('circle').style.opacity = '0.4'">
+                                         onmouseover="this.querySelector('circle').style.opacity = '1'; document.querySelectorAll('.other-dot').forEach(d => d.style.opacity = '1')"
+                                         onmouseout="this.querySelector('circle').style.opacity = '0.4'; document.querySelectorAll('.other-dot').forEach(d => d.style.opacity = '0.4')">
                                         <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#9ca3af" opacity="0.4" stroke="white" stroke-width="0.5"/></svg>
                                         <strong>Other Instructors:</strong>
                                     </div>
