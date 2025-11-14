@@ -1151,11 +1151,45 @@
             const highlightedColor = '#052c65';  // Dark blue for the instructor
             const otherColor = '#9ca3af';        // Light grey for other instructors
 
-            // Separate highlighted vs other sections
+            // Group data by instructor
+            const instructorMap = new Map();
+            metricData.forEach(d => {
+                if (!instructorMap.has(d.Instructor)) {
+                    instructorMap.set(d.Instructor, {
+                        name: d.Instructor,
+                        isHighlighted: d.IsHighlighted,
+                        data: []
+                    });
+                }
+                instructorMap.get(d.Instructor).data.push(d);
+            });
+
+            // Convert to array and sort: focal instructor first, then others alphabetically
+            const instructors = Array.from(instructorMap.values());
+            const focalInstructor = instructors.find(i => i.isHighlighted);
+            const otherInstructors = instructors.filter(i => !i.isHighlighted).sort((a, b) => a.name.localeCompare(b.name));
+            const sortedInstructors = focalInstructor ? [focalInstructor, ...otherInstructors] : otherInstructors;
+
+            // Layout configuration
+            const labelWidth = 150;
+            const chartWidth = 435;
+            const svgWidth = labelWidth + chartWidth;
+            const lineHeight = 11;  // Reduced to 11 for even tighter spacing
+            const svgHeight = sortedInstructors.length * lineHeight + 10;  // Added 10px padding at bottom
+            const margin = { left: 15, right: 15 };
+            const plotWidth = chartWidth - margin.left - margin.right;
+
+            // Scale for positioning dots (score range is always 1-5 for consistency)
+            const scaleMin = 1;
+            const scaleMax = 5;
+            const scaleRange = scaleMax - scaleMin;
+            const scale = (value) => {
+                return ((value - scaleMin) / scaleRange) * plotWidth;
+            };
+
+            // Calculate overall means for legend
             const highlightedData = metricData.filter(d => d.IsHighlighted);
             const otherData = metricData.filter(d => !d.IsHighlighted);
-
-            // Calculate means
             const highlightedMean = highlightedData.length > 0
                 ? highlightedData.reduce((sum, d) => sum + d.Score, 0) / highlightedData.length
                 : null;
@@ -1163,67 +1197,68 @@
                 ? otherData.reduce((sum, d) => sum + d.Score, 0) / otherData.length
                 : null;
 
-            // Create a container for the dot chart - sized to fit column
-            const svgWidth = 585;  // Match column width
-            const svgHeight = 30;
-            const margin = { left: 15, right: 15 };  // More margin to prevent clipping
-            const chartWidth = svgWidth - margin.left - margin.right;
+            // Create SVG
+            let svg = `<div style="overflow: visible; display: flex; flex-direction: column; align-items: center;">`;
+            svg += `<svg width="${svgWidth}" height="${svgHeight}" style="display: block; padding: 2px;">`;
 
-            // Scale for positioning dots (score range is always 1-5 for consistency)
-            const scaleMin = 1;
-            const scaleMax = 5;
-            const scaleRange = scaleMax - scaleMin;
-            const scale = (value) => {
-                return ((value - scaleMin) / scaleRange) * chartWidth;
-            };
-
-            // Create SVG without border - CENTERED
-            let svg = `<div style="overflow: visible; display: flex; flex-direction: column; align-items: center;"><svg width="${svgWidth}" height="${svgHeight}" style="display: block; padding: 2px;">`;
-
-            // Draw a baseline
-            svg += `<line x1="${margin.left}" y1="${svgHeight/2}" x2="${svgWidth - margin.right}" y2="${svgHeight/2}" stroke="#d1d5db" stroke-width="2"/>`;
-
-            // Draw mean line for other instructors (behind dots) - THICKER and FULL HEIGHT
-            if (otherMean !== null) {
-                const x = margin.left + scale(otherMean);
-                svg += `<line x1="${x}" y1="0" x2="${x}" y2="${svgHeight}" stroke="${otherColor}" stroke-width="4">`;
+            // Draw other instructors mean line first (behind everything)
+            if (otherMean !== null && otherInstructors.length > 0) {
+                const firstOtherY = (focalInstructor ? 1 : 0) * lineHeight;  // Start of other instructors
+                const lastOtherY = sortedInstructors.length * lineHeight;  // End of all rows
+                const meanX = labelWidth + margin.left + scale(otherMean);
+                svg += `<line x1="${meanX}" y1="${firstOtherY}" x2="${meanX}" y2="${lastOtherY}" stroke="${otherColor}" stroke-width="3" opacity="0.7">`;
                 svg += `<title>Other instructors mean: ${otherMean.toFixed(2)}</title>`;
                 svg += `</line>`;
             }
 
-            // Draw mean line for this instructor (behind dots) - THICKER and FULL HEIGHT
-            if (highlightedMean !== null) {
-                const x = margin.left + scale(highlightedMean);
-                svg += `<line x1="${x}" y1="0" x2="${x}" y2="${svgHeight}" stroke="${highlightedColor}" stroke-width="4">`;
+            // Draw each instructor's line
+            sortedInstructors.forEach((instructor, idx) => {
+                const y = (idx + 0.5) * lineHeight;
+                const color = instructor.isHighlighted ? highlightedColor : otherColor;
+                const opacity = instructor.isHighlighted ? 0.6 : 0.4;
+                const dotClass = instructor.isHighlighted ? 'instructor-dot' : 'other-dot';
+
+                // Draw instructor name label
+                const labelX = 5;
+                const labelY = y + 4;
+                const fontWeight = instructor.isHighlighted ? 'bold' : 'normal';
+                svg += `<text x="${labelX}" y="${labelY}" font-size="11" fill="${color}" font-weight="${fontWeight}" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">${instructor.name}</text>`;
+
+                // Draw baseline for this instructor
+                svg += `<line x1="${labelWidth + margin.left}" y1="${y}" x2="${labelWidth + chartWidth - margin.right}" y2="${y}" stroke="#d1d5db" stroke-width="1"/>`;
+
+                // Draw dots for this instructor's sections
+                instructor.data.forEach(d => {
+                    const x = labelWidth + margin.left + scale(d.Score);
+                    const radius = 5;
+                    const tooltipText = `${d.Instructor} (Section ${d.Section}, ${d.Term}): ${d.Score.toFixed(2)}`;
+
+                    svg += `<circle class="${dotClass}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" opacity="${opacity}" stroke="white" stroke-width="0.5" style="cursor: pointer;"
+                        data-tooltip="${tooltipText}"
+                        onmouseover="this.style.opacity='1'; showTooltip(event, this.getAttribute('data-tooltip'))"
+                        onmouseout="this.style.opacity='${opacity}'; hideTooltip()"
+                        onmousemove="moveTooltip(event)">`;
+                    svg += `</circle>`;
+                });
+            });
+
+            // Draw focal instructor mean line last (on top of everything)
+            if (highlightedMean !== null && focalInstructor) {
+                const focalY = 0.5 * lineHeight;  // First row
+                const meanX = labelWidth + margin.left + scale(highlightedMean);
+                svg += `<line x1="${meanX}" y1="${focalY - 8}" x2="${meanX}" y2="${focalY + 8}" stroke="${highlightedColor}" stroke-width="3" opacity="1">`;
                 svg += `<title>This instructor mean: ${highlightedMean.toFixed(2)}</title>`;
                 svg += `</line>`;
             }
 
-            // Draw dots for each section (on top of lines) - BIGGER with LESS TRANSPARENCY
-            metricData.forEach((d, idx) => {
-                const x = margin.left + scale(d.Score);
-                const y = svgHeight / 2;
-                const color = d.IsHighlighted ? highlightedColor : otherColor;
-                const opacity = d.IsHighlighted ? 0.6 : 0.4;  // Lower opacity for instructor for better hover contrast, lower for others
-                const radius = 6;  // Increased from 4
-                const dotClass = d.IsHighlighted ? 'instructor-dot' : 'other-dot';
-                const tooltipText = `${d.Instructor} (Section ${d.Section}, ${d.Term}): ${d.Score.toFixed(2)}`;
-
-                // Add circle for the score with different opacity for instructor vs others and hover effect
-                svg += `<circle class="${dotClass}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" opacity="${opacity}" stroke="white" stroke-width="0.5" style="cursor: pointer;"
-                    data-tooltip="${tooltipText}"
-                    onmouseover="this.style.opacity='1'; showTooltip(event, this.getAttribute('data-tooltip'))"
-                    onmouseout="this.style.opacity='${opacity}'; hideTooltip()"
-                    onmousemove="moveTooltip(event)">`;
-                svg += `</circle>`;
-            });
-
             svg += '</svg>';
 
-            // Add scale indicators below the chart
-            svg += '<div style="display: flex; justify-content: space-between; width: ' + svgWidth + 'px; padding: 0 ' + margin.left + 'px; margin-top: 2px; box-sizing: border-box;">';
-            svg += '<span style="font-size: 0.7em; color: #6b7280;">1</span>';
-            svg += '<span style="font-size: 0.7em; color: #6b7280;">5</span>';
+            // Add scale indicators below the chart (1, 2, 3, 4, 5)
+            svg += '<div style="position: relative; width: ' + chartWidth + 'px; margin-top: 2px; margin-left: ' + labelWidth + 'px; height: 14px;">';
+            for (let i = 1; i <= 5; i++) {
+                const position = margin.left + scale(i);
+                svg += '<span style="position: absolute; left: ' + position + 'px; transform: translateX(-50%); font-size: 0.7em; color: #6b7280;">' + i + '</span>';
+            }
             svg += '</div></div>';
 
             // Add legend below the chart with VERTICAL lines
@@ -1272,7 +1307,7 @@
                     .attr('viewBox', '0 0 400 40')
                     .attr('preserveAspectRatio', 'xMidYMid meet');
 
-                const margin = {top: 5, right: 10, bottom: 5, left: 10};
+                const margin = {top: 5, right: 10, bottom: 5, left: 30};
                 const width = 400 - margin.left - margin.right;
                 const height = 40 - margin.top - margin.bottom;
 
@@ -1298,13 +1333,29 @@
                     .domain([d3.min(sortedYears), d3.max(sortedYears)])
                     .range([0, width]);
 
-                // Normalize to overall min/max
+                // Determine if all values are above 3
                 const allValues = [...instructorData.map(d => d.value), ...busnData.map(d => d.value)];
                 const minValue = d3.min(allValues);
-                const maxValue = d3.max(allValues);
+                const useCompactScale = minValue >= 3;
+
+                // Use 3-5 scale if all data is above 3, otherwise 1-5
                 const yScale = d3.scaleLinear()
-                    .domain([minValue, maxValue])
+                    .domain(useCompactScale ? [3, 5] : [1, 5])
                     .range([height, 0]);
+
+                // Add y-axis labels based on scale
+                const yAxisValues = useCompactScale ? [3, 4, 5] : [1, 2, 3, 4, 5];
+                yAxisValues.forEach(val => {
+                    const y = yScale(val);
+                    g.append('text')
+                        .attr('x', -5)
+                        .attr('y', y)
+                        .attr('text-anchor', 'end')
+                        .attr('dominant-baseline', 'middle')
+                        .attr('font-size', '8')
+                        .attr('fill', '#6b7280')
+                        .text(val);
+                });
 
                 // Create line generator
                 const line = d3.line()
@@ -2289,10 +2340,16 @@
                                 ${courseKey}${termsBadge}${sectionsBadge}
                             </button>
                         </h2>
+                        <!-- Summary tables - always visible -->
+                        <div style="padding: 6px 12px; background-color: #f9fafb; border-top: 1px solid #e5e7eb;">
+                            <div id="summary-container-${index}" style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; font-size: 0.55em;">
+                                <span style="color: #6b7280;">Loading...</span>
+                            </div>
+                        </div>
                         <div id="${accordionId}" class="accordion-collapse collapse" aria-labelledby="heading${index}" data-bs-parent="#courseAccordion">
-                            <div class="accordion-body" style="display: flex; justify-content: center;">
-                                <div class="table-responsive">
-                                    <table class="table table-sm mb-0" style="width: 700px;">
+                            <div class="accordion-body" style="display: flex; justify-content: center; padding: 20px; background-color: white;">
+                                <div class="table-responsive" style="background-color: white;">
+                                    <table class="table table-sm mb-0" style="width: 800px; background-color: white;">
                                         <tbody>
                 `;
                 
@@ -2532,6 +2589,36 @@
                 const sectionScores = await fetchSectionScoresByCourse(courseTitle, terms, instructor);
                 console.log(`Received ${sectionScores ? sectionScores.length : 0} section score records`);
 
+                // Calculate summary statistics from section scores
+                const summaryStats = {
+                    course: {},
+                    instructor: {}
+                };
+
+                if (sectionScores && sectionScores.length > 0) {
+                    const courseMetrics = ['Interact', 'Reflect', 'Connect', 'Collab', 'Eval', 'Synth', 'Diverse'];
+                    const instructorMetrics = ['Respect', 'Challenge', 'Creative', 'Discuss', 'Feedback', 'Grading', 'Questions', 'Tech'];
+
+                    [...courseMetrics, ...instructorMetrics].forEach(metric => {
+                        const metricData = sectionScores.filter(d => d.Metric === metric);
+                        const highlightedData = metricData.filter(d => d.IsHighlighted);
+                        const otherData = metricData.filter(d => !d.IsHighlighted);
+
+                        const highlightedMean = highlightedData.length > 0
+                            ? highlightedData.reduce((sum, d) => sum + d.Score, 0) / highlightedData.length
+                            : null;
+                        const otherMean = otherData.length > 0
+                            ? otherData.reduce((sum, d) => sum + d.Score, 0) / otherData.length
+                            : null;
+
+                        const category = courseMetrics.includes(metric) ? 'course' : 'instructor';
+                        summaryStats[category][metric] = {
+                            thisMean: highlightedMean,
+                            otherMean: otherMean
+                        };
+                    });
+                }
+
                 // Update dot charts for this course
                 if (sectionScores && sectionScores.length > 0) {
                     const dotChartCells = document.querySelectorAll(`.dot-chart-cell[data-course-index="${index}"]`);
@@ -2541,6 +2628,69 @@
                         const dotChartHtml = createSectionDotChart(metric, sectionScores);
                         cell.innerHTML = dotChartHtml;
                     });
+
+                    // Update summary tables - 5 columns with 3 metrics each
+                    const summaryContainer = document.getElementById(`summary-container-${index}`);
+                    if (summaryContainer) {
+                        // Combine all metrics
+                        const allMetrics = [...Object.entries(summaryStats.course), ...Object.entries(summaryStats.instructor)];
+
+                        if (allMetrics.length > 0) {
+                            // Split into groups of 3 metrics per column
+                            const metricsPerColumn = 3;
+                            const numColumns = Math.ceil(allMetrics.length / metricsPerColumn);
+
+                            let summaryHtml = '';
+                            for (let col = 0; col < numColumns; col++) {
+                                const startIdx = col * metricsPerColumn;
+                                const columnMetrics = allMetrics.slice(startIdx, startIdx + metricsPerColumn);
+
+                                summaryHtml += `
+                                    <table class="table table-sm table-bordered" style="width: auto; margin: 0;">
+                                        <thead style="background-color: #e5e7eb;">
+                                            <tr>
+                                                <th style="padding: 1px 3px; font-size: 0.9em;"></th>
+                                                <th style="padding: 1px 3px; text-align: center; font-size: 0.9em;">Instructor</th>
+                                                <th style="padding: 1px 3px; text-align: center; font-size: 0.9em;">Others</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                `;
+
+                                columnMetrics.forEach(([metric, stats]) => {
+                                    const thisValue = stats.thisMean !== null ? stats.thisMean.toFixed(2) : 'N/A';
+                                    const otherValue = stats.otherMean !== null ? stats.otherMean.toFixed(2) : 'N/A';
+
+                                    // Bold the bigger number
+                                    const thisNum = stats.thisMean;
+                                    const otherNum = stats.otherMean;
+                                    const thisBold = (thisNum !== null && otherNum !== null && thisNum > otherNum) ? 'font-weight: 700;' : '';
+                                    const otherBold = (thisNum !== null && otherNum !== null && otherNum > thisNum) ? 'font-weight: 700;' : '';
+
+                                    // Get full question text for tooltip
+                                    const tooltipText = tooltips[metric] || metric;
+
+                                    summaryHtml += `
+                                        <tr>
+                                            <td style="padding: 1px 3px; white-space: nowrap; font-size: 0.95em; font-weight: 600; cursor: help;"
+                                                onmouseover="showTooltip(event, '${tooltipText}')"
+                                                onmouseout="hideTooltip()"
+                                                onmousemove="moveTooltip(event)">${metric}</td>
+                                            <td style="padding: 1px 3px; text-align: center; color: #000000; ${thisBold}">${thisValue}</td>
+                                            <td style="padding: 1px 3px; text-align: center; color: #000000; ${otherBold}">${otherValue}</td>
+                                        </tr>
+                                    `;
+                                });
+
+                                summaryHtml += `
+                                        </tbody>
+                                    </table>
+                                `;
+                            }
+
+                            summaryContainer.innerHTML = summaryHtml;
+                        }
+                    }
                 } else {
                     // No section data available
                     console.log(`No section scores available for course: ${courseTitle}`);
@@ -2548,6 +2698,12 @@
                     dotChartCells.forEach(cell => {
                         cell.innerHTML = '<span class="text-muted" style="font-size: 0.75em;">No data</span>';
                     });
+
+                    // Update summary container with no data message
+                    const summaryContainer = document.getElementById(`summary-container-${index}`);
+                    if (summaryContainer) {
+                        summaryContainer.innerHTML = '<span style="color: #6b7280;">No data available</span>';
+                    }
                 }
 
                 // Fetch data for all instructors for this course, excluding the main instructor
@@ -3043,16 +3199,25 @@
             }
 
             if (mode === 'FRPA') {
-                // FRPA: Start term should be Spring
-                for (let year = 2016; year <= currentYear + 1; year++) {
+                // FRPA: Start term should be Spring (reverse chronological)
+                for (let year = currentYear + 1; year >= 2016; year--) {
                     const option = document.createElement('option');
                     option.value = year;
                     option.textContent = `Spring ${year}`;
                     startYearSelect.appendChild(option);
                 }
                 // End year dropdown will be populated by the update function
-            } else if (mode === 'Tenure' || mode === 'Full') {
-                // Tenure/Full: Start term should be Fall
+            } else if (mode === 'Tenure') {
+                // Tenure: Start term should be Fall (only go back 7 years)
+                const startYear = Math.max(2015, currentYear - 7);
+                for (let year = startYear; year <= currentYear; year++) {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = `Fall ${year}`;
+                    startYearSelect.appendChild(option);
+                }
+            } else if (mode === 'Full') {
+                // Full: Start term should be Fall
                 for (let year = 2015; year <= currentYear; year++) {
                     const option = document.createElement('option');
                     option.value = year;
@@ -3060,8 +3225,9 @@
                     startYearSelect.appendChild(option);
                 }
             } else {
-                // PUEC and Ad hoc: Fall terms for start
-                for (let year = 2015; year <= currentYear; year++) {
+                // PUEC and Ad hoc: Fall terms for start (PUEC only goes back 5 years)
+                const startYear = mode === 'PUEC' ? Math.max(2015, currentYear - 5) : 2015;
+                for (let year = startYear; year <= currentYear; year++) {
                     const option = document.createElement('option');
                     option.value = year;
                     option.textContent = `Fall ${year}`;
@@ -3229,7 +3395,7 @@
     </script>
 
     <footer style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid #e5e7eb; color: #6c757d; font-size: 0.9em;">
-        <div>Version 1.5.1</div>
+        <div>Version 1.5.2</div>
         <div style="margin-top: 5px;">Please send suggestions or bug reports to abram.handler@gmail.com</div>
     </footer>
 </body>
