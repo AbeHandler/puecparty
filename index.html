@@ -2646,12 +2646,12 @@
                                 const columnMetrics = allMetrics.slice(startIdx, startIdx + metricsPerColumn);
 
                                 summaryHtml += `
-                                    <table class="table table-sm table-bordered" style="width: auto; margin: 0;">
+                                    <table class="table table-sm" style="width: auto; margin: 0; border: none;">
                                         <thead style="background-color: #e5e7eb;">
                                             <tr>
-                                                <th style="padding: 1px 3px; font-size: 0.9em;"></th>
-                                                <th style="padding: 1px 3px; text-align: center; font-size: 0.9em;">Instructor</th>
-                                                <th style="padding: 1px 3px; text-align: center; font-size: 0.9em;">Others</th>
+                                                <th style="padding: 1px 3px; font-size: 0.9em; border: none;"></th>
+                                                <th style="padding: 1px 3px; text-align: center; font-size: 0.9em; border: none;">Instructor</th>
+                                                <th style="padding: 1px 3px; text-align: center; font-size: 0.9em; border: none;">Others</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -2672,12 +2672,12 @@
 
                                     summaryHtml += `
                                         <tr>
-                                            <td style="padding: 1px 3px; white-space: nowrap; font-size: 0.95em; font-weight: 600; cursor: help;"
+                                            <td style="padding: 1px 3px; white-space: nowrap; font-size: 0.95em; font-weight: 600; cursor: help; border: none;"
                                                 onmouseover="showTooltip(event, '${tooltipText}')"
                                                 onmouseout="hideTooltip()"
                                                 onmousemove="moveTooltip(event)">${metric}</td>
-                                            <td style="padding: 1px 3px; text-align: center; color: #000000; ${thisBold}">${thisValue}</td>
-                                            <td style="padding: 1px 3px; text-align: center; color: #000000; ${otherBold}">${otherValue}</td>
+                                            <td style="padding: 1px 3px; text-align: center; color: #000000; border: none; ${thisBold}">${thisValue}</td>
+                                            <td style="padding: 1px 3px; text-align: center; color: #000000; border: none; ${otherBold}">${otherValue}</td>
                                         </tr>
                                     `;
                                 });
