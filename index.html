@@ -235,30 +235,32 @@
         .histogram-container {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 8px;
             margin-top: 20px;
-            max-width: 600px;
+            max-width: 550px;
             margin-left: auto;
             margin-right: auto;
         }
         .histogram-facet {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 6px 12px;
+            padding: 8px 10px;
             border-bottom: 1px solid #e5e7eb;
             background-color: #fafafa;
         }
         .histogram-title {
-            font-size: 0.85em;
-            font-weight: 600;
-            width: 100px;
-            flex-shrink: 0;
+            font-size: 0.75em;
+            font-weight: 500;
+            width: 100%;
+            text-align: center;
             color: #333;
+            line-height: 1.3;
+            margin-bottom: 6px;
         }
         .histogram-svg {
-            height: 60px;
-            margin-left: 10px;
+            height: 50px;
+            margin-left: 0;
         }
         .histogram-bar {
             fill: #052c65;
@@ -268,7 +270,7 @@
             fill: #083d8a;
         }
         .histogram-axis text {
-            font-size: 10px;
+            font-size: 8px;
             fill: #666;
         }
         .histogram-axis line,
@@ -301,7 +303,7 @@
         }
         .histogram-tab-content {
             display: none;
-            min-height: 700px;
+            min-height: 400px;
         }
         .histogram-tab-content.active {
             display: block;
@@ -1246,7 +1248,7 @@
             if (highlightedMean !== null && focalInstructor) {
                 const focalY = 0.5 * lineHeight;  // First row
                 const meanX = labelWidth + margin.left + scale(highlightedMean);
-                svg += `<line x1="${meanX}" y1="${focalY - 8}" x2="${meanX}" y2="${focalY + 8}" stroke="${highlightedColor}" stroke-width="3" opacity="1">`;
+                svg += `<line x1="${meanX}" y1="${focalY - 5}" x2="${meanX}" y2="${focalY + 8}" stroke="${highlightedColor}" stroke-width="3" opacity="1">`;
                 svg += `<title>This instructor mean: ${highlightedMean.toFixed(2)}</title>`;
                 svg += `</line>`;
             }
@@ -1583,18 +1585,20 @@
                 const facet = histogramContainer.append('div')
                     .attr('class', 'histogram-facet');
 
+                // Use full question text as title
+                const fullText = tooltips[metric] || metric;
                 facet.append('div')
                     .attr('class', 'histogram-title')
-                    .html(wrapMetricWithTooltip(metric));
+                    .text(fullText);
 
                 const svg = facet.append('svg')
                     .attr('class', 'histogram-svg')
-                    .attr('width', 300)
-                    .attr('height', 60);
+                    .attr('width', 200)
+                    .attr('height', 50);
 
-                const margin = { top: 5, right: 10, bottom: 20, left: 25 };
-                const width = 300 - margin.left - margin.right;
-                const height = 60 - margin.top - margin.bottom;
+                const margin = { top: 5, right: 10, bottom: 15, left: 20 };
+                const width = 200 - margin.left - margin.right;
+                const height = 50 - margin.top - margin.bottom;
 
                 const g = svg.append('g')
                     .attr('transform', `translate(${margin.left},${margin.top})`);
@@ -1633,20 +1637,20 @@
                 g.append('g')
                     .attr('class', 'histogram-axis')
                     .attr('transform', `translate(0,${height})`)
-                    .call(d3.axisBottom(x).tickSize(3));
+                    .call(d3.axisBottom(x).tickSize(2));
 
                 // Add y-axis
                 g.append('g')
                     .attr('class', 'histogram-axis')
-                    .call(d3.axisLeft(y).ticks(3).tickSize(3));
+                    .call(d3.axisLeft(y).ticks(2).tickSize(2));
 
                 // Add y-axis label
                 g.append('text')
                     .attr('transform', 'rotate(-90)')
-                    .attr('y', -margin.left + 10)
+                    .attr('y', -margin.left + 3)
                     .attr('x', -height / 2)
                     .attr('text-anchor', 'middle')
-                    .style('font-size', '9px')
+                    .style('font-size', '7px')
                     .style('fill', '#666')
                     .text('Count');
             });
@@ -1718,6 +1722,9 @@
             html += '</div>';
 
             document.getElementById('scoreDistributionsContent').innerHTML = html;
+
+            // Show the score distributions card
+            document.getElementById('scoreDistributions').style.display = 'block';
 
             // Create the histogram charts after the HTML is inserted
             createHistogramChart('courseHistogramTab', distributions, null, 'course');
@@ -1815,7 +1822,13 @@
             // Show loading state
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Loading...';
-            
+
+            // Hide score distributions card if it exists (from previous search)
+            const scoreDistCard = document.getElementById('scoreDistributions');
+            if (scoreDistCard) {
+                scoreDistCard.style.display = 'none';
+            }
+
             resultsDiv.style.display = 'flex';
             resultsDiv.innerHTML = `
                 <div class="card" style="width: 900px;">
@@ -2340,12 +2353,6 @@
                                 ${courseKey}${termsBadge}${sectionsBadge}
                             </button>
                         </h2>
-                        <!-- Summary tables - always visible -->
-                        <div style="padding: 6px 12px; background-color: #f9fafb; border-top: 1px solid #e5e7eb;">
-                            <div id="summary-container-${index}" style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; font-size: 0.55em;">
-                                <span style="color: #6b7280;">Loading...</span>
-                            </div>
-                        </div>
                         <div id="${accordionId}" class="accordion-collapse collapse" aria-labelledby="heading${index}" data-bs-parent="#courseAccordion">
                             <div class="accordion-body" style="display: flex; justify-content: center; padding: 20px; background-color: white;">
                                 <div class="table-responsive" style="background-color: white;">
@@ -2628,69 +2635,6 @@
                         const dotChartHtml = createSectionDotChart(metric, sectionScores);
                         cell.innerHTML = dotChartHtml;
                     });
-
-                    // Update summary tables - 5 columns with 3 metrics each
-                    const summaryContainer = document.getElementById(`summary-container-${index}`);
-                    if (summaryContainer) {
-                        // Combine all metrics
-                        const allMetrics = [...Object.entries(summaryStats.course), ...Object.entries(summaryStats.instructor)];
-
-                        if (allMetrics.length > 0) {
-                            // Split into groups of 3 metrics per column
-                            const metricsPerColumn = 3;
-                            const numColumns = Math.ceil(allMetrics.length / metricsPerColumn);
-
-                            let summaryHtml = '';
-                            for (let col = 0; col < numColumns; col++) {
-                                const startIdx = col * metricsPerColumn;
-                                const columnMetrics = allMetrics.slice(startIdx, startIdx + metricsPerColumn);
-
-                                summaryHtml += `
-                                    <table class="table table-sm" style="width: auto; margin: 0; border: none;">
-                                        <thead style="background-color: #e5e7eb;">
-                                            <tr>
-                                                <th style="padding: 1px 3px; font-size: 0.9em; border: none;"></th>
-                                                <th style="padding: 1px 3px; text-align: center; font-size: 0.9em; border: none;">Instructor</th>
-                                                <th style="padding: 1px 3px; text-align: center; font-size: 0.9em; border: none;">Others</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                `;
-
-                                columnMetrics.forEach(([metric, stats]) => {
-                                    const thisValue = stats.thisMean !== null ? stats.thisMean.toFixed(2) : 'N/A';
-                                    const otherValue = stats.otherMean !== null ? stats.otherMean.toFixed(2) : 'N/A';
-
-                                    // Bold the bigger number
-                                    const thisNum = stats.thisMean;
-                                    const otherNum = stats.otherMean;
-                                    const thisBold = (thisNum !== null && otherNum !== null && thisNum > otherNum) ? 'font-weight: 700;' : '';
-                                    const otherBold = (thisNum !== null && otherNum !== null && otherNum > thisNum) ? 'font-weight: 700;' : '';
-
-                                    // Get full question text for tooltip
-                                    const tooltipText = tooltips[metric] || metric;
-
-                                    summaryHtml += `
-                                        <tr>
-                                            <td style="padding: 1px 3px; white-space: nowrap; font-size: 0.95em; font-weight: 600; cursor: help; border: none;"
-                                                onmouseover="showTooltip(event, '${tooltipText}')"
-                                                onmouseout="hideTooltip()"
-                                                onmousemove="moveTooltip(event)">${metric}</td>
-                                            <td style="padding: 1px 3px; text-align: center; color: #000000; border: none; ${thisBold}">${thisValue}</td>
-                                            <td style="padding: 1px 3px; text-align: center; color: #000000; border: none; ${otherBold}">${otherValue}</td>
-                                        </tr>
-                                    `;
-                                });
-
-                                summaryHtml += `
-                                        </tbody>
-                                    </table>
-                                `;
-                            }
-
-                            summaryContainer.innerHTML = summaryHtml;
-                        }
-                    }
                 } else {
                     // No section data available
                     console.log(`No section scores available for course: ${courseTitle}`);
@@ -2698,12 +2642,6 @@
                     dotChartCells.forEach(cell => {
                         cell.innerHTML = '<span class="text-muted" style="font-size: 0.75em;">No data</span>';
                     });
-
-                    // Update summary container with no data message
-                    const summaryContainer = document.getElementById(`summary-container-${index}`);
-                    if (summaryContainer) {
-                        summaryContainer.innerHTML = '<span style="color: #6b7280;">No data available</span>';
-                    }
                 }
 
                 // Fetch data for all instructors for this course, excluding the main instructor
