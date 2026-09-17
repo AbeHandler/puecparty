@@ -1750,6 +1750,149 @@
             });
         }
 
+        const TREND_STABLE_THRESHOLD = 0.05; // points/year; slopes within this band count as "Stable"
+
+        // Ordinary least-squares slope (points/year) through {year, value} pairs.
+        // Returns null if fewer than 2 points (slope is undefined).
+        function linearRegressionSlope(points) {
+            const n = points.length;
+            if (n < 2) return null;
+
+            const meanX = points.reduce((sum, p) => sum + p.year, 0) / n;
+            const meanY = points.reduce((sum, p) => sum + p.value, 0) / n;
+
+            let numerator = 0;
+            let denominator = 0;
+            points.forEach(p => {
+                numerator += (p.year - meanX) * (p.value - meanY);
+                denominator += (p.year - meanX) * (p.year - meanX);
+            });
+
+            if (denominator === 0) return null; // all points same year
+            return numerator / denominator;
+        }
+
+        const TREND_MIN_CONSECUTIVE_YEARS = 3;
+
+        // Longest run of consecutive year-over-year moves in the same direction
+        // (up: value strictly increasing, down: strictly decreasing). Flat/equal
+        // moves break the streak. Points must be pre-sorted by year.
+        function longestConsecutiveRun(points) {
+            let bestUp = 0, bestDown = 0;
+            let curUp = 0, curDown = 0;
+
+            for (let i = 1; i < points.length; i++) {
+                const delta = points[i].value - points[i - 1].value;
+                if (delta > 0) {
+                    curUp += 1;
+                    curDown = 0;
+                } else if (delta < 0) {
+                    curDown += 1;
+                    curUp = 0;
+                } else {
+                    curUp = 0;
+                    curDown = 0;
+                }
+                bestUp = Math.max(bestUp, curUp);
+                bestDown = Math.max(bestDown, curDown);
+            }
+
+            // A run of N consecutive increases/decreases spans N+1 points/years
+            return { longestUpYears: bestUp + (bestUp > 0 ? 1 : 0), longestDownYears: bestDown + (bestDown > 0 ? 1 : 0) };
+        }
+
+        // Computes a slope + Up/Down/Stable label for each metric, using the
+        // instructor's own yearly averages (not the BUSN comparison series).
+        // A metric only counts as Up/Down if it also has a streak of at least
+        // TREND_MIN_CONSECUTIVE_YEARS consecutive years moving that direction;
+        // otherwise it's called Stable even if the overall slope is nonzero.
+        function buildTrendSummary(metricGroups, sortedYears) {
+            const results = Object.keys(metricGroups).sort().map(metric => {
+                const points = sortedYears
+                    .map(year => {
+                        const record = metricGroups[metric].instructor.find(r => r.Year === year);
+                        return record ? {year, value: record.Score} : null;
+                    })
+                    .filter(p => p !== null);
+
+                const slope = linearRegressionSlope(points);
+                const { longestUpYears, longestDownYears } = longestConsecutiveRun(points);
+
+                let direction = 'Stable';
+                if (slope !== null) {
+                    if (slope > TREND_STABLE_THRESHOLD && longestUpYears >= TREND_MIN_CONSECUTIVE_YEARS) {
+                        direction = 'Up';
+                    } else if (slope < -TREND_STABLE_THRESHOLD && longestDownYears >= TREND_MIN_CONSECUTIVE_YEARS) {
+                        direction = 'Down';
+                    }
+                }
+
+                return { metric, slope, direction, pointCount: points.length, longestUpYears, longestDownYears };
+            }).filter(r => r.slope !== null);
+
+            const up = results.filter(r => r.direction === 'Up');
+            const down = results.filter(r => r.direction === 'Down');
+            const stable = results.filter(r => r.direction === 'Stable');
+
+            return {
+                results,
+                up,
+                down,
+                stable,
+                avgUpSlope: up.length > 0 ? avg(up.map(r => r.slope)) : null,
+                avgDownSlope: down.length > 0 ? avg(down.map(r => r.slope)) : null
+            };
+        }
+
+        function renderTrendSummary(summary) {
+            const { results, up, down, stable, avgUpSlope, avgDownSlope } = summary;
+
+            if (results.length === 0) {
+                return '<div class="alert alert-secondary mb-3"><small>Not enough data across years to compute trends</small></div>';
+            }
+
+            const upText = up.length > 0 ? `${up.length} up (avg +${avgUpSlope.toFixed(2)}/yr)` : `0 up`;
+            const downText = down.length > 0 ? `${down.length} down (avg ${avgDownSlope.toFixed(2)}/yr)` : `0 down`;
+
+            const rows = results
+                .slice()
+                .sort((a, b) => Math.abs(b.slope) - Math.abs(a.slope))
+                .map(r => {
+                    const badgeClass = r.direction === 'Up' ? 'bg-success' : (r.direction === 'Down' ? 'bg-danger' : 'bg-secondary');
+                    const sign = r.slope > 0 ? '+' : '';
+                    const longestRun = Math.max(r.longestUpYears, r.longestDownYears);
+                    return `
+                        <tr>
+                            <td>${r.metric}</td>
+                            <td><span class="badge ${badgeClass}">${r.direction}</span></td>
+                            <td>${sign}${r.slope.toFixed(3)} / yr</td>
+                            <td>${longestRun > 0 ? longestRun + ' yrs' : '-'}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+            return `
+                <div class="mb-3">
+                    <div class="d-flex gap-3 flex-wrap mb-2">
+                        <span class="badge bg-secondary">${stable.length} stable</span>
+                        <span class="badge bg-success">${upText}</span>
+                        <span class="badge bg-danger">${downText}</span>
+                    </div>
+                    <details>
+                        <summary style="cursor: pointer;">Per-metric trend detail</summary>
+                        <div class="table-responsive mt-2">
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr><th>Metric</th><th>Trend</th><th>Slope</th><th>Longest Streak</th></tr>
+                                </thead>
+                                <tbody>${rows}</tbody>
+                            </table>
+                        </div>
+                    </details>
+                </div>
+            `;
+        }
+
         function displayLongitudinalData(data, instructor) {
             console.log('Displaying longitudinal data:', data);
 
@@ -1777,8 +1920,11 @@
             const sortedYears = Array.from(years).sort((a, b) => a - b);
             const metrics = Object.keys(metricGroups).sort();
 
+            const trendSummary = buildTrendSummary(metricGroups, sortedYears);
+
             // Build HTML for longitudinal display with tabs
-            let html = '<div class="mb-4">';
+            let html = renderTrendSummary(trendSummary);
+            html += '<div class="mb-4">';
             html += '<div class="sparkline-tabs">';
             html += '<button class="sparkline-tab-button active" data-tab="instructor">This Instructor</button>';
             html += '<button class="sparkline-tab-button" data-tab="course">This Course</button>';
@@ -1869,6 +2015,9 @@
                 if (endYearInt < startYearInt) {
                     throw new Error('End term must be equal to or after start term');
                 }
+
+                // Reflect this search in the URL so a reload restores it without re-picking
+                syncUrlFromForm();
 
                 // Generate list of terms from start to end
                 const terms = [];
@@ -2318,9 +2467,48 @@
                     <div class="card-body p-0">
                         <div class="accordion" id="courseAccordion">
             `;
-            
+
             // Set initial HTML structure
             resultsDiv.innerHTML = html;
+
+            // Append the by-course summary table card (one row per course, Instructor vs. Others per metric)
+            resultsDiv.innerHTML += `
+                <div class="card mt-3" id="sectionDetailCard" style="width: 900px;">
+                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">By-course analysis for ${document.getElementById('instructor').value.trim() || 'instructor'}</h5>
+                        <div>
+                            <button class="btn btn-outline-dark btn-sm" onclick="downloadShowYourWork()">
+                                <svg width="16" height="16" fill="currentColor" class="bi bi-file-earmark-spreadsheet me-1" viewBox="0 0 16 16">
+                                    <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"/>
+                                    <path d="M8 8a1 1 0 0 1 1 1v4a1 1 0 1 1-2 0V9a1 1 0 0 1 1-1zm-2.5 2a1 1 0 0 1 1 1v2a1 1 0 1 1-2 0v-2a1 1 0 0 1 1-1zm5 1a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1z"/>
+                                </svg>
+                                Show Your Work
+                            </button>
+                            <button class="btn btn-outline-dark btn-sm" onclick="copySectionDetailTable()">
+                                <svg width="16" height="16" fill="currentColor" class="bi bi-clipboard me-1" viewBox="0 0 16 16">
+                                    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/>
+                                    <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/>
+                                </svg>
+                                Copy Table
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-2" style="font-size: 0.85em;">
+                            <b>Bold</b> indicates a statistically notable difference from the Other-instructor
+                            average for that metric/course (Welch's t-test, |t| &gt; 2), shown as e.g. "4.90 (t=+2.3)" or "3.20 (t=-2.1)".
+                        </p>
+                        <div id="sectionDetailContent">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading section data...</span>
+                                </div>
+                                <p class="mt-3 mb-0">Loading section data...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
 
             // Initialize Bootstrap tooltips for the overview section
             const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -2328,6 +2516,9 @@
 
             // Display score distributions
             displayScoreDistributions(courseGroups);
+
+            // Fetch and render the per-section detail table (Term/Year/Sbjct/Crse/.../Item Avg)
+            loadSectionDetailTable();
 
             // Process each course and fetch additional data asynchronously
             const courseEntries = Object.entries(courseGroups);
@@ -2895,7 +3086,310 @@
         // Global variable to store current data for download
         let currentData = null;
         let allInstructorsDataForDownload = [];
-        
+
+        // Holds the last-rendered section-detail table rows (for the Copy Table button)
+        let sectionDetailCourses = null;
+
+        async function fetchInstructorCourseSummary(instructorName, terms) {
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'get_instructor_course_summary',
+                        instructor: instructorName,
+                        terms: terms
+                    })
+                });
+
+                const responseText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.error('Failed to parse course summary response:', parseError);
+                    return null;
+                }
+
+                if (data.statusCode && data.body) {
+                    const actualData = JSON.parse(data.body);
+                    return actualData.success ? actualData.data : null;
+                } else if (data.success) {
+                    return data.data;
+                }
+                console.error('Course summary error:', data.error);
+                return null;
+            } catch (error) {
+                console.error('Error fetching instructor course summary:', error);
+                return null;
+            }
+        }
+
+        async function fetchInstructorCourseRawRows(instructorName, terms) {
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'get_instructor_course_raw_rows',
+                        instructor: instructorName,
+                        terms: terms
+                    })
+                });
+
+                const responseText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.error('Failed to parse raw rows response:', parseError);
+                    return null;
+                }
+
+                if (data.statusCode && data.body) {
+                    const actualData = JSON.parse(data.body);
+                    return actualData.success ? actualData.data : null;
+                } else if (data.success) {
+                    return data.data;
+                }
+                console.error('Raw rows error:', data.error);
+                return null;
+            } catch (error) {
+                console.error('Error fetching instructor course raw rows:', error);
+                return null;
+            }
+        }
+
+        // "Show Your Work": downloads the raw section-level rows (this instructor's
+        // sections plus every other instructor's sections of the same courses/period)
+        // as a CSV, so a human can recompute the on-screen means/SDs by hand.
+        async function downloadShowYourWork() {
+            const instructorName = document.getElementById('instructor').value.trim();
+            if (!instructorName) {
+                alert('Please select an instructor first');
+                return;
+            }
+
+            const terms = buildTermsForCurrentSelection();
+            const rows = await fetchInstructorCourseRawRows(instructorName, terms);
+
+            if (!rows || rows.length === 0) {
+                alert('No raw section data available to export');
+                return;
+            }
+
+            const headers = [
+                'Sbjct', 'Crse', 'Crse Title', 'Term', 'Year', 'Sect',
+                'Instructor Name', 'Is_This_Instructor', 'Enroll', 'Resp Rate',
+                ...COURSE_SUMMARY_METRICS
+            ];
+
+            const csvLines = [headers.join(',')];
+            rows.forEach(row => {
+                const line = headers.map(h => {
+                    let value = row[h];
+                    if (value === null || value === undefined) return '';
+                    if (typeof value === 'string' && value.includes(',')) {
+                        value = `"${value}"`;
+                    }
+                    return value;
+                }).join(',');
+                csvLines.push(line);
+            });
+
+            const blob = new Blob([csvLines.join('\n')], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const namePart = instructorName.replace(/[^a-zA-Z0-9]/g, '_');
+            a.download = `show_your_work_${namePart}_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        function buildTermsForCurrentSelection() {
+            const startYear = document.getElementById('startYear').value;
+            const endYear = document.getElementById('endYear').value;
+            const startYearInt = parseInt(startYear);
+            const endYearInt = parseInt(endYear);
+            const includeSummer = currentMode === 'Ad hoc' && document.getElementById('includeSummer').checked;
+
+            let startTerm, endTerm;
+            if (currentMode === 'FRPA') {
+                startTerm = 'Spring';
+                endTerm = 'Fall';
+            } else if (currentMode === 'Tenure' || currentMode === 'Full' || currentMode === 'PUEC') {
+                startTerm = 'Fall';
+                endTerm = 'Spring';
+            } else if (currentMode === 'Ad hoc') {
+                startTerm = 'Fall';
+                endTerm = 'Spring';
+            }
+
+            const terms = [];
+            for (let year = startYearInt; year <= endYearInt; year++) {
+                if (year === startYearInt && startTerm === 'Spring') {
+                    terms.push(`Spring ${year}`);
+                }
+                if (year >= startYearInt && year < endYearInt) {
+                    terms.push(`Fall ${year}`);
+                } else if (year === endYearInt && endTerm === 'Fall') {
+                    terms.push(`Fall ${year}`);
+                }
+                if (year > startYearInt && year <= endYearInt) {
+                    if (year < endYearInt || (year === endYearInt && endTerm === 'Spring')) {
+                        terms.push(`Spring ${year}`);
+                    }
+                }
+                if (includeSummer && year >= startYearInt && year < endYearInt) {
+                    terms.push(`Summer ${year + 1}`);
+                } else if (includeSummer && year === endYearInt && endTerm === 'Fall') {
+                    terms.push(`Summer ${year}`);
+                }
+            }
+            return terms;
+        }
+
+        function avg(nums) {
+            const valid = nums.filter(n => n !== null && n !== undefined && !isNaN(n));
+            if (valid.length === 0) return null;
+            return valid.reduce((sum, n) => sum + n, 0) / valid.length;
+        }
+
+        function formatRespRate(rate) {
+            return (rate === null || rate === undefined) ? 'NA' : `${Math.round(rate * 100)}%`;
+        }
+
+        function formatAvg(val) {
+            return (val === null || val === undefined) ? 'NA' : val.toFixed(2);
+        }
+
+        // All 16 evaluation metrics, in the order they should appear as column groups
+        const COURSE_SUMMARY_METRICS = [
+            'Interact', 'Reflect', 'Connect', 'Collab', 'Contrib', 'Eval', 'Synth', 'Diverse',
+            'Respect', 'Challenge', 'Creative', 'Discuss', 'Feedback', 'Grading', 'Questions', 'Tech'
+        ];
+
+        // Builds the course-summary table (one row per metric, Instructor vs. Others per
+        // course as column pairs) as an HTML <table> string. Vertical layout so it stays
+        // narrow enough to fit a Google Docs page. Shared by the on-page render and the
+        // Copy Table export, so what's on screen is exactly what pastes into the doc.
+        function buildCourseSummaryTableHtml(courses, forClipboard) {
+            // Inline styles survive paste-sanitization (e.g. into Google Docs) far more
+            // reliably than the align/cellpadding attributes, so cell sizing/alignment
+            // is set this way for both the on-screen table and the clipboard export.
+            const cellPad = forClipboard ? '2px 6px' : '2px 6px';
+            const numStyle = ` style="text-align: center; padding: ${cellPad}; line-height: 1.1;"`;
+            const labelStyle = ` style="padding: ${cellPad}; line-height: 1.1;"`;
+
+            const courseLabel = course => `${course.Sbjct} ${course.Crse}`;
+
+            const headerRow1 = courses
+                .map(c => `<th colspan="2"${numStyle}>${courseLabel(c)}</th>`).join('');
+            const headerRow2 = courses
+                .map(() => `<th${numStyle}>Prof</th><th${numStyle}>Other</th>`).join('');
+
+            const titleRow = courses
+                .map(c => `<td colspan="2"${labelStyle}>${c['Crse Title']}</td>`).join('');
+            const sectionsRow = courses
+                .map(c => `<td${numStyle}>${c.Sections}</td><td${numStyle}>${c.OthersSections}</td>`).join('');
+
+            const WELCH_T_THRESHOLD = 2;
+
+            const metricRows = COURSE_SUMMARY_METRICS.map(metric => {
+                const cells = courses.map(course => {
+                    const pair = course.Metrics[metric] || {};
+                    const { Instructor, WelchT } = pair;
+
+                    // Bold and show Welch's t whenever |t| exceeds the significance
+                    // threshold, in either direction (Prof higher or lower than peers)
+                    const isOutlier = WelchT !== null && WelchT !== undefined
+                        && Math.abs(WelchT) > WELCH_T_THRESHOLD;
+
+                    const tLabel = isOutlier
+                        ? ` (t=${WelchT >= 0 ? '+' : ''}${WelchT.toFixed(1)})`
+                        : '';
+
+                    const profText = `${formatAvg(Instructor)}${tLabel}`;
+                    const profCell = isOutlier ? `<b>${profText}</b>` : profText;
+
+                    return `<td${numStyle}>${profCell}</td><td${numStyle}>${formatAvg(pair.Others)}</td>`;
+                }).join('');
+                return `<tr><td${labelStyle}>${metric}</td>${cells}</tr>`;
+            }).join('');
+
+            const tableAttrs = forClipboard
+                ? 'border="1" cellspacing="0" cellpadding="0" style="border-collapse: collapse; font-family: Arial, sans-serif; font-size: 9pt;"'
+                : 'class="table table-sm table-hover mb-0" style="font-size: 9px;"';
+
+            return `
+                <table ${tableAttrs}>
+                    <thead>
+                        <tr>
+                            <th rowspan="2"${labelStyle}>Metric</th>
+                            ${headerRow1}
+                        </tr>
+                        <tr>${headerRow2}</tr>
+                    </thead>
+                    <tbody>
+                        <tr><td${labelStyle}><i>Course Title</i></td>${titleRow}</tr>
+                        <tr><td${labelStyle}><i>Sections</i></td>${sectionsRow}</tr>
+                        ${metricRows}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        async function loadSectionDetailTable() {
+            const container = document.getElementById('sectionDetailContent');
+            const instructorName = document.getElementById('instructor').value.trim();
+            if (!container || !instructorName) return;
+
+            const terms = buildTermsForCurrentSelection();
+            const courses = await fetchInstructorCourseSummary(instructorName, terms);
+
+            if (!courses || courses.length === 0) {
+                container.innerHTML = '<div class="alert alert-secondary mb-0"><small>No course data available for this eval period</small></div>';
+                sectionDetailCourses = null;
+                return;
+            }
+
+            sectionDetailCourses = courses;
+
+            container.innerHTML = `
+                <div class="table-responsive">
+                    ${buildCourseSummaryTableHtml(courses, false)}
+                </div>
+            `;
+        }
+
+        async function copySectionDetailTable() {
+            if (!sectionDetailCourses || sectionDetailCourses.length === 0) {
+                alert('No table data to copy');
+                return;
+            }
+
+            const note = `
+                <p style="font-family: Arial, sans-serif; font-size: 9pt; color: #666;">
+                    <b>Bold</b> indicates a statistically notable difference from the Other-instructor
+                    average for that metric/course (Welch's t-test, |t| &gt; 2), shown as e.g. "4.90 (t=+2.3)" or "3.20 (t=-2.1)".
+                </p>
+            `;
+            const tableHtml = note + buildCourseSummaryTableHtml(sectionDetailCourses, true);
+
+            try {
+                const blob = new Blob([tableHtml], { type: 'text/html' });
+                const clipboardItem = new ClipboardItem({ 'text/html': blob });
+                await navigator.clipboard.write([clipboardItem]);
+            } catch (error) {
+                console.error('Clipboard write failed:', error);
+                alert('Could not copy table to clipboard. Your browser may not support this feature.');
+            }
+        }
+
+
         function downloadData() {
             if ((!currentData || currentData.length === 0) && (!allInstructorsDataForDownload || allInstructorsDataForDownload.length === 0)) {
                 alert('No data to download');
@@ -3316,24 +3810,86 @@
             }
         }
 
+        // Writes the current form selection into the URL query string (via replaceState,
+        // so it doesn't create new history entries) so a page reload can restore it.
+        function syncUrlFromForm() {
+            const instructor = document.getElementById('instructor').value.trim();
+            const startYear = document.getElementById('startYear').value;
+            const endYear = document.getElementById('endYear').value;
+            const includeSummer = document.getElementById('includeSummer').checked;
+
+            const params = new URLSearchParams();
+            if (instructor) params.set('instructor', instructor);
+            if (currentMode) params.set('mode', currentMode);
+            if (startYear) params.set('start', startYear);
+            if (endYear) params.set('end', endYear);
+            if (currentMode === 'Ad hoc' && includeSummer) params.set('summer', '1');
+
+            const newUrl = `${window.location.pathname}?${params.toString()}`;
+            window.history.replaceState(null, '', newUrl);
+        }
+
+        // Reads instructor/mode/years back out of the URL on load, restores the form,
+        // and re-runs the search automatically so a reload doesn't require re-picking.
+        function restoreFormFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const instructor = params.get('instructor');
+            const mode = params.get('mode');
+            const startYear = params.get('start');
+            const endYear = params.get('end');
+            const summer = params.get('summer') === '1';
+
+            if (!instructor || !mode || !startYear || !endYear) {
+                return false;
+            }
+
+            document.getElementById('instructor').value = instructor;
+            setMode(mode);
+
+            const startYearSelect = document.getElementById('startYear');
+            const endYearSelect = document.getElementById('endYear');
+            startYearSelect.value = startYear;
+
+            const updateFns = {
+                'PUEC': updateEndYearForPUEC,
+                'FRPA': updateEndYearForFRPA,
+                'Tenure': updateEndYearForTenure,
+                'Full': updateEndYearForFull
+            };
+
+            if (mode === 'Ad hoc') {
+                endYearSelect.value = endYear;
+                document.getElementById('includeSummer').checked = summer;
+                updateAdHocNote();
+            } else if (updateFns[mode]) {
+                updateFns[mode]();
+                endYearSelect.value = endYear;
+            }
+
+            document.getElementById('filterForm').requestSubmit();
+            return true;
+        }
+
         // Initialize page on load
         document.addEventListener('DOMContentLoaded', () => {
-            // Set default mode to PUEC
+            initTooltips();
+
+            if (restoreFormFromUrl()) {
+                return;
+            }
+
+            // No saved search in the URL - fall back to default mode/years
             setMode('PUEC');
 
-            // Set default start year for PUEC mode
             const currentYear = new Date().getFullYear();
             const startYearSelect = document.getElementById('startYear');
             startYearSelect.value = currentYear - 3;
             updateEndYearForPUEC();
-
-            // Initialize tooltips
-            initTooltips();
         });
     </script>
 
     <footer style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid #e5e7eb; color: #6c757d; font-size: 0.9em;">
-        <div>Version 1.5.2</div>
+        <div>Version 1.5.3</div>
         <div style="margin-top: 5px;">Please send suggestions or bug reports to abram.handler@gmail.com</div>
     </footer>
 </body>

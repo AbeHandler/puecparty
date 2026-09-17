@@ -78,27 +78,6 @@ def get_unique_instructors():
             of.write(f'  <option value="{name}">\n')
         of.write("</datalist>")
 
-def download_excel_and_upload_to_s3():
-    '''
-    This preprocesses data for S3 allowing the lambda to run much more quickly
-    '''
-
-    URL = "https://www.colorado.edu/fcq/media/42"
-    FILE_PATH = "/tmp/fcq.xlsx"
-    CSV_PATH = "/tmp/fcq.csv"
-    MAX_AGE = 24 * 3600  # 24 hours in seconds
-
-    r = requests.get(URL)
-    r.raise_for_status()
-    with open(FILE_PATH, "wb") as f:
-        f.write(r.content)
-    print("Download complete.")
-
-    df = pd.read_excel(FILE_PATH, sheet_name="FCQ Results", skiprows=6)
-    df.to_csv(CSV_PATH, index=False)
-    print(f"Saved CSV to {CSV_PATH}")
-    os.system("aws s3 cp /tmp/fcq.csv s3://ucbfcqs/fcq.csv")
-
 def ensure_csv():
 
     CSV_PATH = "/tmp/fcq.csv"
@@ -373,14 +352,14 @@ if __name__ == "__main__":
     term_group.add_argument("--academic_year", nargs=2, type=int, metavar=("START", "END"),
                            help="Academic year range like 2023 2024 (Fall 2023 -> Spring 2025)")
 
-    parser.add_argument("--download", action="store_true", help="Download the Excel file")
+    parser.add_argument("--download_and_update", action="store_true", help="Download the latest Excel file and update the S3 CSV")
     parser.add_argument("--demo_stats", action="store_true", help="Run demo of BUSN metrics statistics")
     parser.add_argument("--demo_z_scores", action="store_true", help="Run demo of instructor z-scores")
     parser.add_argument("--demo_section_z_scores", action="store_true", help="Run demo of section-level z-scores")
 
     args = parser.parse_args()
 
-    if args.download:
+    if args.download_and_update:
         download_excel_and_upload_to_s3()
         exit(0)
 
@@ -398,7 +377,7 @@ if __name__ == "__main__":
 
     # Require file and terms for normal operation
     if not args.file:
-        parser.error("--file is required unless using --download, --demo_stats, --demo_z_scores, or --demo_section_z_scores")
+        parser.error("--file is required unless using --download_and_update, --demo_stats, --demo_z_scores, or --demo_section_z_scores")
 
     if not (args.terms or args.year_range or args.academic_year):
         parser.error("One of --terms, --year_range, or --academic_year is required")

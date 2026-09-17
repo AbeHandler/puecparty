@@ -906,6 +906,208 @@ def get_section_scores_by_course(df, terms, course_title, instructor_name=None):
     return results
 
 
+# Metrics averaged into "Crse Item Avg" (course-level questions)
+COURSE_ITEM_METRICS = ["Interact", "Reflect", "Connect", "Collab", "Eval", "Synth", "Diverse"]
+# Metrics averaged into "Inst Item Avg" (instructor-level questions)
+INSTRUCTOR_ITEM_METRICS = ["Respect", "Challenge", "Creative", "Discuss", "Feedback", "Grading", "Questions", "Tech"]
+
+
+def get_instructor_section_detail(df, terms, instructor):
+    """
+    Get one row per section taught by an instructor, for the by-course
+    detail table (Term/Year/Sbjct/Crse/Crse Title/Enroll/Resp Rate/
+    Crse Item Avg/Inst Item Avg).
+
+    Args:
+        df: The main FCQ dataframe (already filtered to BUSN college)
+        terms: List of terms like ["Spring 2024", "Fall 2024"]
+        instructor: Instructor name to filter by
+
+    Returns:
+        List of dicts, one per valid section, sorted by course then term/year
+    """
+    valid_sections = filter_and_prepare_sections(df, terms, instructor=instructor)
+
+    if len(valid_sections) == 0:
+        return []
+
+    results = []
+    for _, row in valid_sections.iterrows():
+        course_scores = [row[m] for m in COURSE_ITEM_METRICS if pd.notnull(row[m])]
+        instructor_scores = [row[m] for m in INSTRUCTOR_ITEM_METRICS if pd.notnull(row[m])]
+
+        results.append({
+            "Term": row["Term"],
+            "Year": int(row["Year"]),
+            "Sbjct": row["Sbjct"],
+            "Crse": int(row["Crse"]),
+            "Crse Title": row["Crse Title"],
+            "Enroll": int(row["Enroll"]),
+            "Resp Rate": float(row["Resp Rate"]) if pd.notnull(row["Resp Rate"]) else None,
+            "Crse Item Avg": float(sum(course_scores) / len(course_scores)) if course_scores else None,
+            "Inst Item Avg": float(sum(instructor_scores) / len(instructor_scores)) if instructor_scores else None,
+        })
+
+    # Sort by course (Sbjct, Crse), then chronologically by Year/Term
+    term_order = {"Spring": 0, "Summer": 1, "Fall": 2}
+    results.sort(key=lambda r: (r["Sbjct"], r["Crse"], r["Year"], term_order.get(r["Term"], 99)))
+
+    return results
+
+
+def get_instructor_course_summary(df, terms, instructor):
+    """
+    Get one row per course an instructor taught during the eval period,
+    summarizing all EVALUATION_METRICS for this instructor vs. all other
+    instructors of that course over the same period.
+
+    Args:
+        df: The main FCQ dataframe (already filtered to BUSN college)
+        terms: List of terms like ["Spring 2024", "Fall 2024"]
+        instructor: Instructor name to summarize
+
+    Returns:
+        List of dicts, one per course, sorted by Sbjct/Crse. Each dict has:
+        - Sbjct, Crse, Crse Title
+        - Sections (instructor's section count), OthersSections (count of
+          other instructors' sections of that course, same eval period)
+        - Metrics: {metric: {"Instructor": mean_or_None, "Others": mean_or_None,
+                              "OthersStd": std_or_None, "InstructorStd": std_or_None,
+                              "InstructorN": int, "OthersN": int,
+                              "WelchT": t_or_None}}
+          OthersStd/InstructorStd are the sample standard deviation (ddof=1) of
+          individual section scores for that metric; None if fewer than 2
+          sections (on that side) have a score for that metric.
+          WelchT is (Instructor - Others) / sqrt(InstructorStd^2/InstructorN +
+          OthersStd^2/OthersN) - the Welch's t-statistic comparing the two
+          means, accounting for each side's own sample size and variance.
+          None unless both sides have at least 2 scored sections for that metric.
+    """
+    instructor_sections = filter_and_prepare_sections(df, terms, instructor=instructor)
+
+    if len(instructor_sections) == 0:
+        return []
+
+    course_keys = instructor_sections[["Sbjct", "Crse", "Crse Title"]].drop_duplicates()
+
+    # Sections from everyone else, for the same courses and terms, used as the "Others" comparison
+    other_sections = filter_and_prepare_sections(df, terms, instructor=None)
+    other_sections = other_sections[other_sections["Instructor Name"] != instructor]
+
+    results = []
+    for _, course_row in course_keys.iterrows():
+        sbjct, crse, crse_title = course_row["Sbjct"], course_row["Crse"], course_row["Crse Title"]
+
+        instructor_course_sections = instructor_sections[
+            (instructor_sections["Sbjct"] == sbjct) & (instructor_sections["Crse"] == crse)
+        ]
+        others_course_sections = other_sections[
+            (other_sections["Sbjct"] == sbjct) & (other_sections["Crse"] == crse)
+        ]
+
+        metrics_out = {}
+        for metric in EVALUATION_METRICS:
+            instructor_vals = instructor_course_sections[metric].dropna()
+            others_vals = others_course_sections[metric].dropna()
+
+            instructor_mean = float(instructor_vals.mean()) if len(instructor_vals) > 0 else None
+            others_mean = float(others_vals.mean()) if len(others_vals) > 0 else None
+            instructor_std = float(instructor_vals.std(ddof=1)) if len(instructor_vals) > 1 else None
+            others_std = float(others_vals.std(ddof=1)) if len(others_vals) > 1 else None
+            instructor_n = int(len(instructor_vals))
+            others_n = int(len(others_vals))
+
+            welch_t = None
+            if instructor_std is not None and others_std is not None:
+                se_diff_sq = (instructor_std ** 2) / instructor_n + (others_std ** 2) / others_n
+                if se_diff_sq > 0:
+                    welch_t = (instructor_mean - others_mean) / (se_diff_sq ** 0.5)
+
+            metrics_out[metric] = {
+                "Instructor": instructor_mean,
+                "Others": others_mean,
+                "OthersStd": others_std,
+                "InstructorStd": instructor_std,
+                "InstructorN": instructor_n,
+                "OthersN": others_n,
+                "WelchT": welch_t,
+            }
+
+        results.append({
+            "Sbjct": sbjct,
+            "Crse": int(crse),
+            "Crse Title": crse_title,
+            "Sections": int(len(instructor_course_sections)),
+            "OthersSections": int(len(others_course_sections)),
+            "Metrics": metrics_out,
+        })
+
+    results.sort(key=lambda r: (r["Sbjct"], r["Crse"]))
+    return results
+
+
+def get_instructor_course_raw_rows(df, terms, instructor):
+    """
+    "Show your work" export: one row per section, for every course this
+    instructor taught during the eval period, covering both the instructor's
+    own sections and every other instructor's sections of those same courses
+    and terms. Lets a human recompute the course-summary means/SDs by hand.
+
+    Args:
+        df: The main FCQ dataframe (already filtered to BUSN college)
+        terms: List of terms like ["Spring 2024", "Fall 2024"]
+        instructor: Instructor name to scope courses to
+
+    Returns:
+        List of dicts, one per section, with Term/Year/Sbjct/Crse/Crse Title/
+        Sect/Instructor Name/Is_This_Instructor/Enroll/Resp Rate, and every
+        raw EVALUATION_METRICS column. Sorted by course, then Is_This_Instructor
+        (this instructor's rows first), then Term/Year.
+    """
+    instructor_sections = filter_and_prepare_sections(df, terms, instructor=instructor)
+
+    if len(instructor_sections) == 0:
+        return []
+
+    course_keys = set(
+        zip(instructor_sections["Sbjct"], instructor_sections["Crse"])
+    )
+
+    all_sections = filter_and_prepare_sections(df, terms, instructor=None)
+    course_sections = all_sections[
+        all_sections.apply(lambda r: (r["Sbjct"], r["Crse"]) in course_keys, axis=1)
+    ]
+
+    term_order = {"Spring": 0, "Summer": 1, "Fall": 2}
+
+    results = []
+    for _, row in course_sections.iterrows():
+        is_this_instructor = row["Instructor Name"] == instructor
+        record = {
+            "Sbjct": row["Sbjct"],
+            "Crse": int(row["Crse"]),
+            "Crse Title": row["Crse Title"],
+            "Term": row["Term"],
+            "Year": int(row["Year"]),
+            "Sect": row["Sect"],
+            "Instructor Name": row["Instructor Name"],
+            "Is_This_Instructor": bool(is_this_instructor),
+            "Enroll": int(row["Enroll"]),
+            "Resp Rate": float(row["Resp Rate"]) if pd.notnull(row["Resp Rate"]) else None,
+        }
+        for metric in EVALUATION_METRICS:
+            record[metric] = float(row[metric]) if pd.notnull(row[metric]) else None
+        results.append(record)
+
+    results.sort(key=lambda r: (
+        r["Sbjct"], r["Crse"],
+        0 if r["Is_This_Instructor"] else 1,
+        r["Year"], term_order.get(r["Term"], 99)
+    ))
+
+    return results
+
+
 def handle_longitudinal_scores_event(event):
     """Handle request for instructor + BUSN-wide evaluation scores"""
     path = event.get("path", "/tmp/scoreby_year_2020_present.csv")
@@ -1058,6 +1260,84 @@ def handle_section_scores_by_course_event(event, df):
     }
 
 
+def handle_instructor_section_detail_event(event, df):
+    """Handle request for per-section detail rows for an instructor's by-course table"""
+    instructor = event.get("instructor")
+    terms = event.get("terms")
+
+    if not instructor:
+        raise ValueError("Missing required field: 'instructor'")
+    if not terms:
+        raise ValueError("Missing required field: 'terms'")
+
+    data = get_instructor_section_detail(df, terms, instructor)
+
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+        },
+        "body": json.dumps({
+            "success": True,
+            "data": data,
+            "count": len(data)
+        })
+    }
+
+
+def handle_instructor_course_summary_event(event, df):
+    """Handle request for the eval-period course summary table (instructor vs. others)"""
+    instructor = event.get("instructor")
+    terms = event.get("terms")
+
+    if not instructor:
+        raise ValueError("Missing required field: 'instructor'")
+    if not terms:
+        raise ValueError("Missing required field: 'terms'")
+
+    data = get_instructor_course_summary(df, terms, instructor)
+
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+        },
+        "body": json.dumps({
+            "success": True,
+            "data": data,
+            "count": len(data)
+        })
+    }
+
+
+def handle_instructor_course_raw_rows_event(event, df):
+    """Handle request for the 'Show Your Work' raw section-level export"""
+    instructor = event.get("instructor")
+    terms = event.get("terms")
+
+    if not instructor:
+        raise ValueError("Missing required field: 'instructor'")
+    if not terms:
+        raise ValueError("Missing required field: 'terms'")
+
+    data = get_instructor_course_raw_rows(df, terms, instructor)
+
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+        },
+        "body": json.dumps({
+            "success": True,
+            "data": data,
+            "count": len(data)
+        })
+    }
+
+
 def lambda_handler(event, context):
     """
     AWS Lambda handler function
@@ -1084,6 +1364,15 @@ def lambda_handler(event, context):
         elif action is not None and action == "get_section_scores_by_course":
             df = load_df()
             return handle_section_scores_by_course_event(event, df)
+        elif action is not None and action == "get_instructor_section_detail":
+            df = load_df()
+            return handle_instructor_section_detail_event(event, df)
+        elif action is not None and action == "get_instructor_course_summary":
+            df = load_df()
+            return handle_instructor_course_summary_event(event, df)
+        elif action is not None and action == "get_instructor_course_raw_rows":
+            df = load_df()
+            return handle_instructor_course_raw_rows_event(event, df)
 
         # Extract parameters for standard filter request
         instructor = event.get('instructor')
