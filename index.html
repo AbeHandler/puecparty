@@ -3119,13 +3119,13 @@
         // Methodology (with the bold/t legend) shown above the course-summary table. On screen it is a
         // collapsible dropdown; the Copy Table export expands it, since Google Docs drops <details>.
         // Inline styles survive paste into Google Docs.
-        function buildCourseSummaryNoteHtml(instructorName, courses, forClipboard) {
+        function buildCourseSummaryNoteHtml(courses, forClipboard) {
             const pStyle = 'font-family: Arial, sans-serif; font-size: 9pt; color: #666; margin: 0 0 4px 0;';
             const nMetrics = COURSE_SUMMARY_METRICS.length;
             const nComparisons = courses.length * nMetrics;
             const body = `
                 <p style="${pStyle}">
-                    To evaluate FCQ scores, the application compares ${instructorName} to peers teaching the same class during the same time period,
+                    To evaluate FCQ scores, the application compares the instructor to peers teaching the same class during the same time period,
                     across all FCQ categories. This method controls for course characteristics like difficulty and student population (via conditioning).
                     In total, we performed ${nComparisons} different comparisons (i.e., ${courses.length} courses x ${nMetrics} FCQ metrics).
                     For each comparison, the application computes the sample mean and sample variance of this faculty member's FCQ scores,
@@ -3236,7 +3236,7 @@
             sectionDetailCourses = courses;
 
             container.innerHTML = `
-                ${buildCourseSummaryNoteHtml(instructorName, courses, false)}
+                ${buildCourseSummaryNoteHtml(courses, false)}
                 <div class="table-responsive">
                     ${buildCourseSummaryTableHtml(courses, false)}
                 </div>
@@ -3249,8 +3249,7 @@
                 return;
             }
 
-            const instructorName = document.getElementById('instructor').value.trim();
-            const tableHtml = buildCourseSummaryNoteHtml(instructorName, sectionDetailCourses, true)
+            const tableHtml = buildCourseSummaryNoteHtml(sectionDetailCourses, true)
                 + buildCourseSummaryTableHtml(sectionDetailCourses, true);
 
             try {
