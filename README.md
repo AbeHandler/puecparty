@@ -5,6 +5,7 @@ The lambda reads data from a s3 bucket. Set it up like this.
 
 
 # Versions
+- 1.7.0 By-course table moved to top with methodology note; header shows "Data current as of" latest term; deploy date in footer
 - 1.6.0 Added per-section by-course detail table with copy-to-clipboard for Google Docs
 - 1.5.0 Added circle visualization
 - 1.4.0 Added outlier detection

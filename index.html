@@ -441,6 +441,7 @@
                     <div class="card-header">
                         <h1 class="mb-0">PUEC Party 🥳</h1>
                         <p class="mb-0 mt-2">Process Faculty Course Questionnaires</p>
+                        <p class="mb-0 mt-1" style="font-size: 0.75em; color: #9ca3af;">Data current as of <span id="latestTerm">&hellip;</span></p>
                         <p class="mb-0 mt-1" style="font-size: 0.75em; color: #9ca3af;">Based on raw data available <a href="https://www.colorado.edu/fcq/media/42" target="_blank" style="color: #6b7280; text-decoration: underline;">here</a></p>
                     </div>
                     <div class="card-body p-4">
@@ -989,7 +990,7 @@
                             </div>
 
                             <div class="mt-3 text-center">
-                                <small class="text-muted fst-italic" id="modeNote">
+                                <small class="text-muted fst-italic" id="modeNote" style="font-size: 0.75em;">
                                 </small>
                             </div>
                         </form>
@@ -1005,6 +1006,25 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script>
         const API_URL = 'https://hl9a4tetlj.execute-api.us-east-1.amazonaws.com/prod/fcq';
+
+        // Most recent term in the live data (e.g. "Spring 2026"), shown in the page header
+        async function loadLatestTerm() {
+            const el = document.getElementById('latestTerm');
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_latest_term' })
+                });
+                const data = await response.json();
+                const body = data.body ? JSON.parse(data.body) : data;
+                if (!body.success) throw new Error(body.error);
+                el.textContent = body.data;
+            } catch (error) {
+                console.error('Error fetching latest term:', error);
+                el.textContent = 'unknown';
+            }
+        }
 
         async function fetchLongitudinalScores(instructor) {
             try {
@@ -2402,7 +2422,8 @@
             const startYear = document.getElementById('startYear').value;
             const endYear = document.getElementById('endYear').value;
 
-            let html = `
+            // Date-range summary card, shown first
+            const summaryCardHtml = `
                 <div class="card mb-3" style="width: 900px;">
                     <div class="card-header bg-success text-white">
                         <h5 class="mb-0">Showing results from ${startYear ? 'Fall ' + startYear : 'earliest'} to ${endYear ? 'Spring ' + endYear : 'latest'}</h5>
@@ -2430,6 +2451,9 @@
                         </div>
                     </div>
                 </div>
+            `;
+
+            let html = `
                 <div class="card mb-3" id="longitudinal" style="width: 900px;">
                     <div class="card-header bg-success text-white">
                         <h5 class="mb-0">Trends for ${document.getElementById('instructor').value.trim() || 'instructor'}</h5>
@@ -2468,12 +2492,9 @@
                         <div class="accordion" id="courseAccordion">
             `;
 
-            // Set initial HTML structure
-            resultsDiv.innerHTML = html;
-
-            // Append the by-course summary table card (one row per course, Instructor vs. Others per metric)
-            resultsDiv.innerHTML += `
-                <div class="card mt-3" id="sectionDetailCard" style="width: 900px;">
+            // By-course summary table card (Instructor vs. Others per metric), shown right after the summary card
+            const sectionDetailCardHtml = `
+                <div class="card mb-3" id="sectionDetailCard" style="width: 900px;">
                     <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">By-course analysis for ${document.getElementById('instructor').value.trim() || 'instructor'}</h5>
                         <div>
@@ -2494,10 +2515,6 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted mb-2" style="font-size: 0.85em;">
-                            <b>Bold</b> indicates a statistically notable difference from the Other-instructor
-                            average for that metric/course (Welch's t-test, |t| &gt; 2), shown as e.g. "4.90 (t=+2.3)" or "3.20 (t=-2.1)".
-                        </p>
                         <div id="sectionDetailContent">
                             <div class="text-center">
                                 <div class="spinner-border text-primary" role="status">
@@ -2509,6 +2526,9 @@
                     </div>
                 </div>
             `;
+
+            // Set initial HTML structure
+            resultsDiv.innerHTML = summaryCardHtml + sectionDetailCardHtml + html;
 
             // Initialize Bootstrap tooltips for the overview section
             const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -2892,184 +2912,6 @@
                         `;
                     }
                 }
-
-                // OLD CODE - keeping for now but not executing
-                if (false && allInstructorsData && allInstructorsData.length > 0) {
-                    // Group by course (should only be one course)
-                    const allInstructorsCourseGroups = {};
-                    allInstructorsData.forEach(row => {
-                        const courseKey = `${row.Sbjct} ${row.Crse} - ${row['Crse Title']}`;
-                        if (!allInstructorsCourseGroups[courseKey]) {
-                            allInstructorsCourseGroups[courseKey] = [];
-                        }
-                        allInstructorsCourseGroups[courseKey].push(row);
-                    });
-
-                    const firstCourseData = Object.values(allInstructorsCourseGroups)[0];
-                    
-                    let allInstructorsHtml = `
-                        <div class="table-responsive" style="flex: 1; display: flex; flex-direction: column;">
-                            <table class="table table-sm table-hover mb-0" style="table-layout: fixed; width: 100%; flex: 1;">
-                                <tbody>
-                    `;
-
-                    // Define metric categories and order
-                    const metaMetrics = ['All_Sections', 'Response_Rate', 'Terms'];
-                    const courseMetrics = ['Interact', 'Reflect', 'Connect', 'Collab', 'Eval', 'Synth', 'Diverse'];
-                    const instructorMetrics = ['Respect', 'Challenge', 'Creative', 'Discuss', 'Feedback', 'Grading', 'Questions', 'Tech'];
-
-                    // Separate metrics into categories
-                    const metaRows = [];
-                    const courseRows = [];
-                    const instructorRows = [];
-
-                    firstCourseData.forEach(row => {
-                        if (row.Metric === 'Count') return; // Skip Count metric
-
-                        if (metaMetrics.includes(row.Metric)) {
-                            metaRows.push(row);
-                        } else if (courseMetrics.includes(row.Metric)) {
-                            courseRows.push(row);
-                        } else if (instructorMetrics.includes(row.Metric)) {
-                            instructorRows.push(row);
-                        }
-                    });
-
-                    // Sort each category by the defined order
-                    metaRows.sort((a, b) => metaMetrics.indexOf(a.Metric) - metaMetrics.indexOf(b.Metric));
-                    courseRows.sort((a, b) => courseMetrics.indexOf(a.Metric) - courseMetrics.indexOf(b.Metric));
-                    instructorRows.sort((a, b) => instructorMetrics.indexOf(a.Metric) - instructorMetrics.indexOf(b.Metric));
-
-                    // Calculate terms count for all instructors
-                    let allInstructorsTermsCount = 0;
-                    const allTermsRow = metaRows.find(row => row.Metric === 'Terms');
-                    if (allTermsRow && Array.isArray(allTermsRow.Value)) {
-                        allInstructorsTermsCount = allTermsRow.Value.length;
-                    }
-
-                    // Store all instructors count
-                    window.courseTermsHeights[index].allInstructorsCount = allInstructorsTermsCount;
-
-                    // Render meta metrics (Total Sections, Response Rate, Terms Taught)
-                    metaRows.forEach(row => {
-                        let value = row.Value;
-                        let badgeClass = 'bg-secondary';
-                        let displayMetric = row.Metric;
-                        let useBadge = true;
-                        let rowClass = '';
-
-                        if (row.Metric === 'Response_Rate') {
-                            badgeClass = 'bg-warning';
-                            displayMetric = 'Response Rate';
-                            value = typeof value === 'number' ? (value * 100).toFixed(1) + '%' : value;
-                            rowClass = 'response-rate-row-right';
-                        } else if (row.Metric === 'Terms') {
-                            displayMetric = 'Terms Taught';
-                            useBadge = false;
-                            if (Array.isArray(value)) {
-                                value = value.join(', ');
-                            }
-                            rowClass = 'terms-taught-row-right';
-                        } else if (row.Metric === 'All_Sections') {
-                            displayMetric = 'Sections Taught';
-                            badgeClass = 'bg-secondary';
-                            rowClass = 'total-sections-row-right';
-                        }
-
-                        const displayValue = useBadge ? `<span class="badge ${badgeClass}">${value}</span>` : value;
-
-                        allInstructorsHtml += `
-                            <tr class="${rowClass}" data-course-index="${index}">
-                                <td style="width: 40%; overflow: hidden; text-overflow: ellipsis; vertical-align: top; border-bottom: none;">${displayMetric}</td>
-                                <td style="width: 60%; word-wrap: break-word; white-space: ${row.Metric === 'Terms' ? 'normal' : 'nowrap'}; overflow: hidden; ${row.Metric === 'Terms' ? 'overflow-y: auto; display: block;' : ''} vertical-align: top; border-bottom: none;">${displayValue}</td>
-                            </tr>
-                        `;
-                    });
-
-                    // After inserting HTML, sync the heights on both sides
-                    setTimeout(() => {
-                        syncTermsHeights(index);
-                    }, 100);
-
-                    // Add "this course" label
-                    if (courseRows.length > 0) {
-                        allInstructorsHtml += `
-                            <tr>
-                                <td colspan="2" style="padding-top: 12px; padding-bottom: 4px; ${metaRows.length > 0 ? 'border-top: 1px solid #e5e7eb;' : ''} border-bottom: none;">
-                                    <span style="color: #9ca3af; font-size: 0.85em; font-style: italic;">In this course, I was encouraged to</span>
-                                </td>
-                            </tr>
-                        `;
-                    }
-
-                    // Render course-level metrics
-                    courseRows.forEach(row => {
-                        let value = row.Value;
-                        let badgeClass = 'bg-secondary';
-                        let displayMetric = wrapMetricWithTooltip(row.Metric);
-                        let useBadge = true;
-
-                        if (typeof value === 'number') {
-                            badgeClass = value >= 4 ? 'bg-success' : value >= 3 ? 'bg-warning' : 'bg-danger';
-                        }
-
-                        const displayValue = useBadge ? `<span class="badge ${badgeClass}">${value}</span>` : value;
-
-                        allInstructorsHtml += `
-                            <tr>
-                                <td style="width: 40%; overflow: hidden; text-overflow: ellipsis; vertical-align: top; border-bottom: none;">${displayMetric}</td>
-                                <td style="width: 60%; word-wrap: break-word; white-space: nowrap; overflow: hidden; vertical-align: top; border-bottom: none;">${displayValue}</td>
-                            </tr>
-                        `;
-                    });
-
-                    // Add separator and "this instructor" label
-                    if (instructorRows.length > 0) {
-                        allInstructorsHtml += `
-                            <tr>
-                                <td colspan="2" style="padding-top: 12px; padding-bottom: 4px; border-top: 1px solid #e5e7eb; border-bottom: none;">
-                                    <span style="color: #9ca3af; font-size: 0.85em; font-style: italic;">In this course, the instructor</span>
-                                </td>
-                            </tr>
-                        `;
-                    }
-
-                    // Render instructor-level metrics
-                    instructorRows.forEach(row => {
-                        let value = row.Value;
-                        let badgeClass = 'bg-secondary';
-                        let displayMetric = wrapMetricWithTooltip(row.Metric);
-                        let useBadge = true;
-
-                        if (typeof value === 'number') {
-                            badgeClass = value >= 4 ? 'bg-success' : value >= 3 ? 'bg-warning' : 'bg-danger';
-                        }
-
-                        const displayValue = useBadge ? `<span class="badge ${badgeClass}">${value}</span>` : value;
-
-                        allInstructorsHtml += `
-                            <tr>
-                                <td style="width: 40%; overflow: hidden; text-overflow: ellipsis; vertical-align: top; border-bottom: none;">${displayMetric}</td>
-                                <td style="width: 60%; word-wrap: break-word; white-space: nowrap; overflow: hidden; vertical-align: top; border-bottom: none;">${displayValue}</td>
-                            </tr>
-                        `;
-                    });
-                    
-                    allInstructorsHtml += `
-                                </tbody>
-                            </table>
-                        </div>
-                    `;
-                    
-                    allInstructorsContainer.innerHTML = allInstructorsHtml;
-                } else {
-                    // No other instructors data (either 0 rows returned or no data)
-                    allInstructorsContainer.innerHTML = `
-                        <div class="alert alert-secondary">
-                            <small>There are no other instructors for this course</small>
-                        </div>
-                    `;
-                }
             });
             
             // Close the main HTML structure
@@ -3272,6 +3114,43 @@
             'Respect', 'Challenge', 'Creative', 'Discuss', 'Feedback', 'Grading', 'Questions', 'Tech'
         ];
 
+        const WELCH_T_THRESHOLD = 2;
+
+        // Methodology (with the bold/t legend) shown above the course-summary table. On screen it is a
+        // collapsible dropdown; the Copy Table export expands it, since Google Docs drops <details>.
+        // Inline styles survive paste into Google Docs.
+        function buildCourseSummaryNoteHtml(courses, forClipboard) {
+            const pStyle = 'font-family: Arial, sans-serif; font-size: 9pt; color: #666; margin: 0 0 4px 0;';
+            const nMetrics = COURSE_SUMMARY_METRICS.length;
+            const nComparisons = courses.length * nMetrics;
+            const body = `
+                <p style="${pStyle}">
+                    To evaluate FCQ scores, the application compares the instructor to peers teaching the same class during the same time period,
+                    across all FCQ categories. This method controls for course characteristics like difficulty and student population (via conditioning).
+                    In total, the tool performed ${nComparisons} different comparisons (i.e., ${courses.length} courses x ${nMetrics} FCQ metrics).
+                    For each comparison, the application computes the sample mean and sample variance of this faculty member's FCQ scores,
+                    as well as the sample mean and variance of peer FCQ scores (i.e., all scores for other course instructors).
+                    The application then computes a Welch&rsquo;s t statistic to highlight cases where the faculty member's FCQ scores fall
+                    far above or far below those of their peers (|t| &gt; ${WELCH_T_THRESHOLD}). This statistic can be interpreted as a kind
+                    of z-score that accounts for the spread of scores among instructors teaching a given class, as well as for sample size.
+                    Extreme outliers (i.e., |t| &gt; ${WELCH_T_THRESHOLD}) are shown in bold.
+                    Because the tool performs ${nComparisons} comparisons, it is possible that some outliers arise by chance.
+                    For simplicity, the tool does not apply a formal adjustment procedure like the Bonferroni correction.
+                    However, faculty members may wish to do so.
+                </p>
+            `;
+
+            if (forClipboard) {
+                return `<p style="${pStyle}"><b>Methodology</b></p>${body}`;
+            }
+            return `
+                <details style="margin-bottom: 8px;">
+                    <summary style="${pStyle} cursor: pointer;"><b>Methodology</b></summary>
+                    ${body}
+                </details>
+            `;
+        }
+
         // Builds the course-summary table (one row per metric, Instructor vs. Others per
         // course as column pairs) as an HTML <table> string. Vertical layout so it stays
         // narrow enough to fit a Google Docs page. Shared by the on-page render and the
@@ -3295,8 +3174,6 @@
                 .map(c => `<td colspan="2"${labelStyle}>${c['Crse Title']}</td>`).join('');
             const sectionsRow = courses
                 .map(c => `<td${numStyle}>${c.Sections}</td><td${numStyle}>${c.OthersSections}</td>`).join('');
-
-            const WELCH_T_THRESHOLD = 2;
 
             const metricRows = COURSE_SUMMARY_METRICS.map(metric => {
                 const cells = courses.map(course => {
@@ -3359,6 +3236,7 @@
             sectionDetailCourses = courses;
 
             container.innerHTML = `
+                ${buildCourseSummaryNoteHtml(courses, false)}
                 <div class="table-responsive">
                     ${buildCourseSummaryTableHtml(courses, false)}
                 </div>
@@ -3371,13 +3249,8 @@
                 return;
             }
 
-            const note = `
-                <p style="font-family: Arial, sans-serif; font-size: 9pt; color: #666;">
-                    <b>Bold</b> indicates a statistically notable difference from the Other-instructor
-                    average for that metric/course (Welch's t-test, |t| &gt; 2), shown as e.g. "4.90 (t=+2.3)" or "3.20 (t=-2.1)".
-                </p>
-            `;
-            const tableHtml = note + buildCourseSummaryTableHtml(sectionDetailCourses, true);
+            const tableHtml = buildCourseSummaryNoteHtml(sectionDetailCourses, true)
+                + buildCourseSummaryTableHtml(sectionDetailCourses, true);
 
             try {
                 const blob = new Blob([tableHtml], { type: 'text/html' });
@@ -3873,6 +3746,7 @@
         // Initialize page on load
         document.addEventListener('DOMContentLoaded', () => {
             initTooltips();
+            loadLatestTerm();
 
             if (restoreFormFromUrl()) {
                 return;
@@ -3889,7 +3763,7 @@
     </script>
 
     <footer style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid #e5e7eb; color: #6c757d; font-size: 0.9em;">
-        <div>Version 1.5.3</div>
+        <div>Version 1.7.0 &middot; Updated <span id="updatedDate">2026-10-02</span></div>
         <div style="margin-top: 5px;">Please send suggestions or bug reports to abram.handler@gmail.com</div>
     </footer>
 </body>
