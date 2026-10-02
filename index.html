@@ -2511,7 +2511,6 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        ${buildCourseSummaryNoteHtml()}
                         <div id="sectionDetailContent">
                             <div class="text-center">
                                 <div class="spinner-border text-primary" role="status">
@@ -3293,24 +3292,26 @@
 
         // Legend + methodology shown above the course-summary table. Shared by the
         // on-page render and the Copy Table export. Inline styles survive paste into Google Docs.
-        function buildCourseSummaryNoteHtml() {
+        function buildCourseSummaryNoteHtml(instructorName, courses) {
             const pStyle = 'font-family: Arial, sans-serif; font-size: 9pt; color: #666; margin: 0 0 4px 0;';
+            const nMetrics = COURSE_SUMMARY_METRICS.length;
+            const nComparisons = courses.length * nMetrics;
             return `
                 <p style="${pStyle}">
                     <b>Bold</b> indicates a statistically notable difference from the Other-instructor
                     average for that metric/course (Welch's t-test, |t| &gt; ${WELCH_T_THRESHOLD}), shown as e.g. "4.90 (t=+2.3)" or "3.20 (t=-2.1)".
                 </p>
                 <p style="${pStyle}"><b>Methodology</b></p>
-                <ul style="${pStyle} padding-left: 18px;">
-                    <li><b>Sections:</b> BUSN sections in the selected eval period. Summer terms are excluded unless "Include summer" is checked.
-                        Undergraduate sections (1000&ndash;4999) with enrollment under 10 are excluded; all graduate sections are included.</li>
-                    <li><b>Prof:</b> unweighted mean of this instructor's section scores for the course (each section counts once, regardless of responses).</li>
-                    <li><b>Other:</b> unweighted mean of every other instructor's sections of the same course (subject + number) in the same terms.
-                        Co-taught sections count once for each instructor listed.</li>
-                    <li><b>t:</b> Welch's t = (Prof &minus; Other) / &radic;(s<sub>P</sub>&sup2;/n<sub>P</sub> + s<sub>O</sub>&sup2;/n<sub>O</sub>), using sample SDs of section scores.
-                        Only computed when both sides have at least 2 sections. |t| &gt; ${WELCH_T_THRESHOLD} is roughly p &lt; .05; not adjusted for testing 16 metrics.</li>
-                    <li><b>Show Your Work</b> downloads every section row used, so any cell can be recomputed by hand.</li>
-                </ul>
+                <p style="${pStyle}">
+                    To evaluate FCQ scores, the application compares ${instructorName} to peers teaching the same class during the same time period,
+                    across all FCQ categories. This method controls for course characteristics like difficulty and student population (via conditioning).
+                    In total, we performed ${nComparisons} different comparisons (i.e., ${courses.length} courses x ${nMetrics} FCQ metrics).
+                    For each comparison, the application computes the sample mean and sample variance of this faculty member's FCQ scores,
+                    as well as the sample mean and variance of peer FCQ scores (i.e., all scores for other course instructors).
+                    The application then computes a Welch&rsquo;s t statistic to highlight cases where the faculty member's FCQ scores fall
+                    far above or far below those of their peers (|t| &gt; ${WELCH_T_THRESHOLD}). This statistic can be interpreted as a kind
+                    of z-score that accounts for the spread of scores among instructors teaching a given class, as well as for sample size.
+                </p>
             `;
         }
 
@@ -3399,6 +3400,7 @@
             sectionDetailCourses = courses;
 
             container.innerHTML = `
+                ${buildCourseSummaryNoteHtml(instructorName, courses)}
                 <div class="table-responsive">
                     ${buildCourseSummaryTableHtml(courses, false)}
                 </div>
@@ -3411,7 +3413,9 @@
                 return;
             }
 
-            const tableHtml = buildCourseSummaryNoteHtml() + buildCourseSummaryTableHtml(sectionDetailCourses, true);
+            const instructorName = document.getElementById('instructor').value.trim();
+            const tableHtml = buildCourseSummaryNoteHtml(instructorName, sectionDetailCourses)
+                + buildCourseSummaryTableHtml(sectionDetailCourses, true);
 
             try {
                 const blob = new Blob([tableHtml], { type: 'text/html' });
