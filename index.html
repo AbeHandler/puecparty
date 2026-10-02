@@ -441,6 +441,7 @@
                     <div class="card-header">
                         <h1 class="mb-0">PUEC Party 🥳</h1>
                         <p class="mb-0 mt-2">Process Faculty Course Questionnaires</p>
+                        <p class="mb-0 mt-1" style="font-size: 0.75em; color: #9ca3af;">Data current as of <span id="latestTerm">&hellip;</span></p>
                         <p class="mb-0 mt-1" style="font-size: 0.75em; color: #9ca3af;">Based on raw data available <a href="https://www.colorado.edu/fcq/media/42" target="_blank" style="color: #6b7280; text-decoration: underline;">here</a></p>
                     </div>
                     <div class="card-body p-4">
@@ -1005,6 +1006,25 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script>
         const API_URL = 'https://hl9a4tetlj.execute-api.us-east-1.amazonaws.com/prod/fcq';
+
+        // Most recent term in the live data (e.g. "Spring 2026"), shown in the page header
+        async function loadLatestTerm() {
+            const el = document.getElementById('latestTerm');
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_latest_term' })
+                });
+                const data = await response.json();
+                const body = data.body ? JSON.parse(data.body) : data;
+                if (!body.success) throw new Error(body.error);
+                el.textContent = body.data;
+            } catch (error) {
+                console.error('Error fetching latest term:', error);
+                el.textContent = 'unknown';
+            }
+        }
 
         async function fetchLongitudinalScores(instructor) {
             try {
@@ -2468,12 +2488,9 @@
                         <div class="accordion" id="courseAccordion">
             `;
 
-            // Set initial HTML structure
-            resultsDiv.innerHTML = html;
-
-            // Append the by-course summary table card (one row per course, Instructor vs. Others per metric)
-            resultsDiv.innerHTML += `
-                <div class="card mt-3" id="sectionDetailCard" style="width: 900px;">
+            // By-course summary table card (Instructor vs. Others per metric), shown first
+            const sectionDetailCardHtml = `
+                <div class="card mb-3" id="sectionDetailCard" style="width: 900px;">
                     <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">By-course analysis for ${document.getElementById('instructor').value.trim() || 'instructor'}</h5>
                         <div>
@@ -2494,10 +2511,7 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted mb-2" style="font-size: 0.85em;">
-                            <b>Bold</b> indicates a statistically notable difference from the Other-instructor
-                            average for that metric/course (Welch's t-test, |t| &gt; 2), shown as e.g. "4.90 (t=+2.3)" or "3.20 (t=-2.1)".
-                        </p>
+                        ${buildCourseSummaryNoteHtml()}
                         <div id="sectionDetailContent">
                             <div class="text-center">
                                 <div class="spinner-border text-primary" role="status">
@@ -2509,6 +2523,9 @@
                     </div>
                 </div>
             `;
+
+            // Set initial HTML structure
+            resultsDiv.innerHTML = sectionDetailCardHtml + html;
 
             // Initialize Bootstrap tooltips for the overview section
             const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -3272,6 +3289,31 @@
             'Respect', 'Challenge', 'Creative', 'Discuss', 'Feedback', 'Grading', 'Questions', 'Tech'
         ];
 
+        const WELCH_T_THRESHOLD = 2;
+
+        // Legend + methodology shown above the course-summary table. Shared by the
+        // on-page render and the Copy Table export. Inline styles survive paste into Google Docs.
+        function buildCourseSummaryNoteHtml() {
+            const pStyle = 'font-family: Arial, sans-serif; font-size: 9pt; color: #666; margin: 0 0 4px 0;';
+            return `
+                <p style="${pStyle}">
+                    <b>Bold</b> indicates a statistically notable difference from the Other-instructor
+                    average for that metric/course (Welch's t-test, |t| &gt; ${WELCH_T_THRESHOLD}), shown as e.g. "4.90 (t=+2.3)" or "3.20 (t=-2.1)".
+                </p>
+                <p style="${pStyle}"><b>Methodology</b></p>
+                <ul style="${pStyle} padding-left: 18px;">
+                    <li><b>Sections:</b> BUSN sections in the selected eval period. Summer terms are excluded unless "Include summer" is checked.
+                        Undergraduate sections (1000&ndash;4999) with enrollment under 10 are excluded; all graduate sections are included.</li>
+                    <li><b>Prof:</b> unweighted mean of this instructor's section scores for the course (each section counts once, regardless of responses).</li>
+                    <li><b>Other:</b> unweighted mean of every other instructor's sections of the same course (subject + number) in the same terms.
+                        Co-taught sections count once for each instructor listed.</li>
+                    <li><b>t:</b> Welch's t = (Prof &minus; Other) / &radic;(s<sub>P</sub>&sup2;/n<sub>P</sub> + s<sub>O</sub>&sup2;/n<sub>O</sub>), using sample SDs of section scores.
+                        Only computed when both sides have at least 2 sections. |t| &gt; ${WELCH_T_THRESHOLD} is roughly p &lt; .05; not adjusted for testing 16 metrics.</li>
+                    <li><b>Show Your Work</b> downloads every section row used, so any cell can be recomputed by hand.</li>
+                </ul>
+            `;
+        }
+
         // Builds the course-summary table (one row per metric, Instructor vs. Others per
         // course as column pairs) as an HTML <table> string. Vertical layout so it stays
         // narrow enough to fit a Google Docs page. Shared by the on-page render and the
@@ -3295,8 +3337,6 @@
                 .map(c => `<td colspan="2"${labelStyle}>${c['Crse Title']}</td>`).join('');
             const sectionsRow = courses
                 .map(c => `<td${numStyle}>${c.Sections}</td><td${numStyle}>${c.OthersSections}</td>`).join('');
-
-            const WELCH_T_THRESHOLD = 2;
 
             const metricRows = COURSE_SUMMARY_METRICS.map(metric => {
                 const cells = courses.map(course => {
@@ -3371,13 +3411,7 @@
                 return;
             }
 
-            const note = `
-                <p style="font-family: Arial, sans-serif; font-size: 9pt; color: #666;">
-                    <b>Bold</b> indicates a statistically notable difference from the Other-instructor
-                    average for that metric/course (Welch's t-test, |t| &gt; 2), shown as e.g. "4.90 (t=+2.3)" or "3.20 (t=-2.1)".
-                </p>
-            `;
-            const tableHtml = note + buildCourseSummaryTableHtml(sectionDetailCourses, true);
+            const tableHtml = buildCourseSummaryNoteHtml() + buildCourseSummaryTableHtml(sectionDetailCourses, true);
 
             try {
                 const blob = new Blob([tableHtml], { type: 'text/html' });
@@ -3873,6 +3907,7 @@
         // Initialize page on load
         document.addEventListener('DOMContentLoaded', () => {
             initTooltips();
+            loadLatestTerm();
 
             if (restoreFormFromUrl()) {
                 return;

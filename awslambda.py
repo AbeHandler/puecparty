@@ -1108,6 +1108,35 @@ def get_instructor_course_raw_rows(df, terms, instructor):
     return results
 
 
+def get_latest_term(df):
+    """
+    Most recent term in the data, e.g. "Spring 2026". Shown on the front end
+    as "Data current as of ..." so users know how fresh the CSV is.
+    """
+    term_order = {"Spring": 0, "Summer": 1, "Fall": 2}
+    terms = df[["Year", "Term"]].drop_duplicates()
+    year, term = max(
+        zip(terms["Year"].astype(int), terms["Term"]),
+        key=lambda yt: (yt[0], term_order[yt[1]]),
+    )
+    return f"{term} {year}"
+
+
+def handle_latest_term_event(df):
+    """Handle request for the most recent term in the data"""
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+        },
+        "body": json.dumps({
+            "success": True,
+            "data": get_latest_term(df),
+        })
+    }
+
+
 def handle_longitudinal_scores_event(event):
     """Handle request for instructor + BUSN-wide evaluation scores"""
     path = event.get("path", "/tmp/scoreby_year_2020_present.csv")
@@ -1373,6 +1402,9 @@ def lambda_handler(event, context):
         elif action is not None and action == "get_instructor_course_raw_rows":
             df = load_df()
             return handle_instructor_course_raw_rows_event(event, df)
+        elif action is not None and action == "get_latest_term":
+            df = load_df()
+            return handle_latest_term_event(df)
 
         # Extract parameters for standard filter request
         instructor = event.get('instructor')
