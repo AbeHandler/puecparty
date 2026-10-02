@@ -2422,7 +2422,8 @@
             const startYear = document.getElementById('startYear').value;
             const endYear = document.getElementById('endYear').value;
 
-            let html = `
+            // Date-range summary card, shown first
+            const summaryCardHtml = `
                 <div class="card mb-3" style="width: 900px;">
                     <div class="card-header bg-success text-white">
                         <h5 class="mb-0">Showing results from ${startYear ? 'Fall ' + startYear : 'earliest'} to ${endYear ? 'Spring ' + endYear : 'latest'}</h5>
@@ -2450,6 +2451,9 @@
                         </div>
                     </div>
                 </div>
+            `;
+
+            let html = `
                 <div class="card mb-3" id="longitudinal" style="width: 900px;">
                     <div class="card-header bg-success text-white">
                         <h5 class="mb-0">Trends for ${document.getElementById('instructor').value.trim() || 'instructor'}</h5>
@@ -2488,7 +2492,7 @@
                         <div class="accordion" id="courseAccordion">
             `;
 
-            // By-course summary table card (Instructor vs. Others per metric), shown first
+            // By-course summary table card (Instructor vs. Others per metric), shown right after the summary card
             const sectionDetailCardHtml = `
                 <div class="card mb-3" id="sectionDetailCard" style="width: 900px;">
                     <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
@@ -2524,7 +2528,7 @@
             `;
 
             // Set initial HTML structure
-            resultsDiv.innerHTML = sectionDetailCardHtml + html;
+            resultsDiv.innerHTML = summaryCardHtml + sectionDetailCardHtml + html;
 
             // Initialize Bootstrap tooltips for the overview section
             const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
