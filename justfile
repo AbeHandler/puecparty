@@ -68,8 +68,13 @@ deploy_frontend:
 
     trap 'rm -rf "$BUILD_DIR"' EXIT
 
-    # Deploy only index.html, not node_modules, spreadsheets, or test fixtures
-    cp index.html "$BUILD_DIR/"
+    # Deploy only index.html, not node_modules, spreadsheets, or test fixtures.
+    # Stamp today's date into the footer's "Updated" field.
+    TODAY=$(date +%Y-%m-%d)
+    sed "s|<span id=\"updatedDate\">[^<]*</span>|<span id=\"updatedDate\">$TODAY</span>|" \
+        index.html > "$BUILD_DIR/index.html"
+    grep -q "<span id=\"updatedDate\">$TODAY</span>" "$BUILD_DIR/index.html" \
+        || { echo "Could not stamp updated date into index.html" >&2; exit 1; }
 
     echo "Deploying index.html to $SITE_URL..."
     netlify deploy --prod --dir "$BUILD_DIR" --site "$SITE_ID"
@@ -79,9 +84,9 @@ deploy_frontend:
         | sed '/<!-- This site is hosted on Netlify/,/-->/d' \
         > "$BUILD_DIR/live.html"
 
-    if ! cmp -s index.html "$BUILD_DIR/live.html"; then
+    if ! cmp -s "$BUILD_DIR/index.html" "$BUILD_DIR/live.html"; then
         echo "MISMATCH: live page does not match local index.html" >&2
         exit 1
     fi
 
-    echo "Confirmed: $SITE_URL is now serving the local index.html"
+    echo "Confirmed: $SITE_URL is now serving the local index.html (updated $TODAY)"
