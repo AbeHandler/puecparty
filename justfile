@@ -55,3 +55,33 @@ deploy_lambda:
     fi
 
     echo "Confirmed: fcqprocessor is now running the local awslambda.py"
+
+# Deploy index.html to the puecparty Netlify site and confirm the live page
+# matches the local file (ignoring the comment Netlify injects).
+deploy_frontend:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    SITE_ID=51478252-5854-4975-8aef-97b24e7dee8b
+    SITE_URL=https://puecparty.netlify.app/
+    BUILD_DIR=$(mktemp -d)
+
+    trap 'rm -rf "$BUILD_DIR"' EXIT
+
+    # Deploy only index.html, not node_modules, spreadsheets, or test fixtures
+    cp index.html "$BUILD_DIR/"
+
+    echo "Deploying index.html to $SITE_URL..."
+    netlify deploy --prod --dir "$BUILD_DIR" --site "$SITE_ID"
+
+    echo "Checking live page against local index.html..."
+    curl -s -H 'Cache-Control: no-cache' "$SITE_URL" \
+        | sed '/<!-- This site is hosted on Netlify/,/-->/d' \
+        > "$BUILD_DIR/live.html"
+
+    if ! cmp -s index.html "$BUILD_DIR/live.html"; then
+        echo "MISMATCH: live page does not match local index.html" >&2
+        exit 1
+    fi
+
+    echo "Confirmed: $SITE_URL is now serving the local index.html"
